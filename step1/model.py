@@ -18,13 +18,26 @@ class step1_model:
 
     def build_variables(self):
         print("Building variables")
-    
+        for g in self.data.generators:
+            for t in self.data.timeSpan:
+                self.variables.production[g, t] = self.model.addVar(lb=self.data.Pmin[g], ub=self.data.Pmax[g], name=f"Production_{g}")
     def build_constraints(self):
+        for g in self.data.generators:
+            for t in self.data.timeSpan:
+                self.constraints.production_limit[g, t] = self.model.addConstr(self.variables.production[g, t] <= self.data.Pmax[g], name=f"ProductionMAXLimit_{g}")
+                self.constraints.production_limit[g, t] = self.model.addConstr(self.variables.production[g, t] >= self.data.Pmin[g], name=f"ProductionMINLimit_{g}")
+
+        for t in self.data.timeSpan:
+            for g in self.data.generators:
+                self.data.demand[t] = self.model.addConstr(gp.quicksum(self.variables.production[g, t] for g in self.data.generators) == self.data.demand[t], name=f"SystemDemandHour_{t}")
         print("Optimizing model")
     
     
         
     def build_objective_function(self):
+        for g in self.data.generators:
+            for t in self.data.timeSpan:
+                self.model.setObjective(self.data.bid_offers[g] * self.variables.production[g, t], GRB.MAXIMIZE)
         print("Building objective function")
 
     

@@ -1,6 +1,8 @@
 class InputData:
-    def __init__(self, generators: list):
+    def __init__(self, generators: list, bid_offers: list, demand: list):
         # Initialize dictionaries to store the technical data for each generator
+        self.generators = [i for i in range(1,13)]
+        self.timeSpan = [i for i in range(1,2)]
         self.Pmax = {}
         self.Pmin = {}
         self.Max_up_reserve = {}
@@ -9,6 +11,8 @@ class InputData:
         self.DT = {}
         self.RU = {}
         self.RD = {}
+        self.bid_offers = bid_offers
+        self.demand = demand
 
         # Populate the dictionaries with data from the generators input
         for gen in generators:
@@ -38,10 +42,24 @@ generators = [
     {'Unit #': 12, 'Pmax (MW)': 350, 'Pmin (MW)': 140, 'R+ (MW)': 40, 'R- (MW)': 40, 'RU (MW/h)': 240, 'RD (MW/h)': 240, 'UT (h)': 8, 'DT (h)': 8},
 ]
 
+#!!!! CHANGE VALUES
+bid_offers = [13.32, 20.7, 20.93, 26.11, 10.52, 10.52, 6.02, 5.47, 0, 10.52, 10.89, 10.89]  # Adjusted to match the number of units
+
+# System demand values in MW for each hour
+system_demand = [
+    1775.835, 1669.815, 1590.3, 1563.795, 1563.795, 
+    1590.3, 1961.37, 2279.43, 2517.975, 2544.48, 
+    2544.48, 2517.975, 2517.975, 2517.975, 2464.965, 
+    2464.965, 2623.995, 2650.5, 2650.5, 2544.48, 
+    2411.955, 2199.915, 1934.865, 1669.815
+]
+
+
 # Create an instance of InputData
 input_data = InputData(generators)
 
 # Accessing data for a specific unit
+print("Generators: ", input_data.generators)
 unit_id = 3
 print(f"Max Power for Unit {unit_id}: {input_data.Pmax[unit_id]} MW")
 print(f"Min Power for Unit {unit_id}: {input_data.Pmin[unit_id]} MW")
