@@ -1,8 +1,9 @@
-from model.py import step1_model
 from input_data import *
+from model import Step1_model
 
-input_data = InputData(generators)
 
-model = step1_model(input_data)
+input_data = InputData(generators, bid_offers, system_demand, demand_bid_price)
+
+model = Step1_model(input_data)
 model.run()
 model.print_results()

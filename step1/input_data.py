@@ -1,5 +1,5 @@
 class InputData:
-    def __init__(self, generators: list, bid_offers: list, demand: list):
+    def __init__(self, generators: list, bid_offers: list, demand: list, demand_bid_price: float):  
         # Initialize dictionaries to store the technical data for each generator
         self.generators = [i for i in range(1,13)]
         self.timeSpan = [i for i in range(1,2)]
@@ -13,6 +13,7 @@ class InputData:
         self.RD = {}
         self.bid_offers = bid_offers
         self.demand = demand
+        self.demand_bid_price = demand_bid_price
 
         # Populate the dictionaries with data from the generators input
         for gen in generators:
@@ -53,9 +54,10 @@ system_demand = [
     2464.965, 2623.995, 2650.5, 2650.5, 2544.48, 
     2411.955, 2199.915, 1934.865, 1669.815
 ]
+demand_bid_price = 15 # $/MWh
 
-
-# Create an instance of InputData
+# Try class InputData
+"""
 input_data = InputData(generators)
 
 # Accessing data for a specific unit
@@ -69,4 +71,4 @@ print(f"Up Time for Unit {unit_id}: {input_data.UT[unit_id]} hours")
 print(f"Down Time for Unit {unit_id}: {input_data.DT[unit_id]} hours")
 print(f"Ramp Up Rate for Unit {unit_id}: {input_data.RU[unit_id]} MW/h")
 print(f"Ramp Down Rate for Unit {unit_id}: {input_data.RD[unit_id]} MW/h")
-
+"""
