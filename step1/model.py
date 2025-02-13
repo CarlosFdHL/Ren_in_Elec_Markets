@@ -1,5 +1,6 @@
 import gurobipy as gp
 from gurobipy import GRB
+import pandas as pd
 
 from input_data import InputData
 
@@ -27,7 +28,6 @@ class Step1_model:
                 }
                     
     def build_constraints(self):
-
         self.constraints.production_upper_limit = {
             (g, t): self.model.addConstr(self.variables.production[g, t], 
                                          GRB.LESS_EQUAL, 
@@ -70,8 +70,10 @@ class Step1_model:
         print("\nBuilding model")
         self.model = gp.Model(name="Investment Optimization Model")
         self.model.setParam('OutputFlag', 1)
+
         print("\nBuilding variables")
         self.build_variables()
+
         print("\nBuilding constraints")
         self.build_constraints()
         
@@ -86,12 +88,35 @@ class Step1_model:
             for g in self.data.generators
             for t in self.data.timeSpan
         }
+        self.results.objective = self.model.objVal
+        self.results.price = {
+            t: constraint.Pi for t, constraint in self.constraints.demand.items()
+        }
+        self.results.production_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
+        self.results.profit_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
+
+        for t, constraint in self.constraints.demand.items():
+            for g in self.data.generators:
+                self.results.production_data.at[t, g] = self.variables.production[g, t].X
+                self.results.profit_data.at[t, g] = constraint.Pi * self.variables.production[g, t].X
 
     def print_results(self):
         print("\nPrinting results")
-        for g in self.data.generators:
-            for t in self.data.timeSpan:
-                print(f"Production for Generator {g} at hour {t}: {self.results.production[g, t]} MW")
+        
+        print("\n1.-The market clearing price for each hour:")
+        for t, price in self.results.price.items():
+            print(f"Hour {t}: {price} $/MWh")
+
+        print(f"\n2.-Social welfare of the system: {self.results.objective}")
+
+        print("\nProduction for each generator")
+        print(self.results.production_data)
+
+        print("\n3.-Profit for each producer")
+        print(self.results.profit_data)
+
+        print("\n4.-Utility of each demand")
+        
 
     def run(self):
         self.model.optimize()
