@@ -11,7 +11,11 @@ class Expando(object):
     pass
 
 class Step1_model:
+    # Step1_model is a class that represents the optimization model. It receives an instance of the InputData class to build the optimization model and solve it.
+
     def __init__(self, input_data: InputData):
+        # Initialize model attributes
+
         self.data = input_data
         self.variables = Expando()
         self.constraints = Expando()
@@ -19,6 +23,8 @@ class Step1_model:
         self.build_model()
 
     def build_variables(self):
+        # Create the variables
+
         for g in self.data.generators:
             for t in self.data.timeSpan:
                 self.variables.production = {
@@ -28,6 +34,8 @@ class Step1_model:
                 }
                     
     def build_constraints(self):
+        # Create the constraints
+
         self.constraints.production_upper_limit = {
             (g, t): self.model.addConstr(self.variables.production[g, t], 
                                          GRB.LESS_EQUAL, 
@@ -55,6 +63,8 @@ class Step1_model:
         } 
         
     def build_objective_function(self):
+        # Create the objective function
+
         demand_cost = gp.quicksum(
             self.data.demand_bid_price * self.data.demand[t] 
             for t in self.data.timeSpan
@@ -67,6 +77,8 @@ class Step1_model:
         self.model.setObjective(demand_cost - producers_revenue, GRB.MAXIMIZE)
 
     def build_model(self):
+        # Creates the model and calls the functions to build the variables, constraints, and objective function
+
         print("\nBuilding model")
         self.model = gp.Model(name="Investment Optimization Model")
         self.model.setParam('OutputFlag', 1)
@@ -82,6 +94,8 @@ class Step1_model:
         self.model.update()
 
     def save_results(self):
+        # Save the results in the results attribute
+
         print("\nSaving results")
         self.results.production = {
             (g, t): self.variables.production[g, t].x
@@ -101,6 +115,8 @@ class Step1_model:
                 self.results.profit_data.at[t, g] = constraint.Pi * self.variables.production[g, t].X
 
     def print_results(self):
+        # Print the results of the optimization problem
+
         print("\nPrinting results")
         
         print("\n1.-The market clearing price for each hour:")
@@ -119,6 +135,8 @@ class Step1_model:
         
 
     def run(self):
+        # Makes sure the model is solved and saves the results
+        
         self.model.optimize()
         if self.model.status == GRB.OPTIMAL:
             self.save_results()

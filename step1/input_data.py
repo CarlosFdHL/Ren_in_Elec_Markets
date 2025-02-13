@@ -1,3 +1,6 @@
+# Description: This file contains the InputData class that is used to store the technical data for each generator and the system demand data.
+
+# The class is used to instantiate an object that is passed to the model class to build the optimization model.
 class InputData:
     def __init__(self, generators: list, bid_offers: list, demand: list, demand_bid_price: float):  
         # Initialize dictionaries to store the technical data for each generator
@@ -63,19 +66,18 @@ system_demand = [
 ]
 demand_bid_price = 15 # $/MWh
 
-# Try class InputData
-"""
-input_data = InputData(generators)
+if __name__ == "__main__":
+    # Use in case you want to access the data directly
+    input_data = InputData(generators)
 
-# Accessing data for a specific unit
-print("Generators: ", input_data.generators)
-unit_id = 3
-print(f"Max Power for Unit {unit_id}: {input_data.Pmax[unit_id]} MW")
-print(f"Min Power for Unit {unit_id}: {input_data.Pmin[unit_id]} MW")
-print(f"Maximum up reserve capacity  for Unit {unit_id}: {input_data.Max_up_reserve[unit_id]} MW")
-print(f"Maximum down reserve capacity for Unit {unit_id}: {input_data.Max_down_reserve[unit_id]} MW")
-print(f"Up Time for Unit {unit_id}: {input_data.UT[unit_id]} hours")
-print(f"Down Time for Unit {unit_id}: {input_data.DT[unit_id]} hours")
-print(f"Ramp Up Rate for Unit {unit_id}: {input_data.RU[unit_id]} MW/h")
-print(f"Ramp Down Rate for Unit {unit_id}: {input_data.RD[unit_id]} MW/h")
-"""
+    # Accessing data for a specific unit
+    print("Generators: ", input_data.generators)
+    unit_id = 3
+    print(f"Max Power for Unit {unit_id}: {input_data.Pmax[unit_id]} MW")
+    print(f"Min Power for Unit {unit_id}: {input_data.Pmin[unit_id]} MW")
+    print(f"Maximum up reserve capacity  for Unit {unit_id}: {input_data.Max_up_reserve[unit_id]} MW")
+    print(f"Maximum down reserve capacity for Unit {unit_id}: {input_data.Max_down_reserve[unit_id]} MW")
+    print(f"Up Time for Unit {unit_id}: {input_data.UT[unit_id]} hours")
+    print(f"Down Time for Unit {unit_id}: {input_data.DT[unit_id]} hours")
+    print(f"Ramp Up Rate for Unit {unit_id}: {input_data.RU[unit_id]} MW/h")
+    print(f"Ramp Down Rate for Unit {unit_id}: {input_data.RD[unit_id]} MW/h")
