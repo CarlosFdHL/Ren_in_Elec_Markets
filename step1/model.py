@@ -65,16 +65,16 @@ class Step1_model:
         self.constraints.demand = {
             t: self.model.addConstr(gp.quicksum(self.variables.production[g, t] for g in self.data.generators), 
                                     GRB.EQUAL, 
-                                    self.data.demand[t], 
+                                    self.data.demand[i], 
                                     name=f"SystemDemandHour_{t}")
-            for t in self.data.timeSpan
+            for i, t in enumerate(self.data.timeSpan)
         } 
         
     def build_objective_function(self):
         # Create the objective function
         demand_cost = 0
         for t in self.data.timeSpan:
-            demand_cost += gp.quicksum(self.data.demand_bid_price[t][i] * self.data.demand_per_load[i] 
+            demand_cost += gp.quicksum(self.data.demand_bid_price[t][i] * self.data.demand_per_load[i+1] 
                 for i in range(len(self.data.demand_per_load)))
             
         producers_revenue = gp.quicksum(
@@ -114,13 +114,19 @@ class Step1_model:
         self.results.price = {
             t: constraint.Pi for t, constraint in self.constraints.demand.items()
         }
+
         self.results.production_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
         self.results.profit_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
+        self.results.utility = pd.DataFrame(index=self.data.timeSpan, columns=self.data.demand_per_load)
 
         for t, constraint in self.constraints.demand.items():
             for g in self.data.generators:
                 self.results.production_data.at[t, g] = self.variables.production[g, t].X
                 self.results.profit_data.at[t, g] = constraint.Pi * self.variables.production[g, t].X
+            
+        for t_index, t in enumerate(self.data.timeSpan):
+            for key, power_consumption in self.data.demand_per_load.items():   
+                self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.price[t]) * power_consumption
 
     def print_results(self):
         # Print the results of the optimization problem
@@ -140,6 +146,9 @@ class Step1_model:
         print(self.results.profit_data)
 
         print("\n4.-Utility of each demand")
+        pd.set_option('display.max_columns', None)
+        print(self.results.utility)
+        pd.reset_option('display.max_columns')
         
 
     def run(self):

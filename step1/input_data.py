@@ -3,10 +3,11 @@ import numpy as np
 
 # The class is used to instantiate an object that is passed to the model class to build the optimization model.
 class InputData:
-    def __init__(self, generators: list, bid_offers: list, demand: list, demand_per_load: dict):  
+    def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict):  
         # Initialize dictionaries to store the technical data for each generator
-        self.generators = [i for i in range(1,13)]
-        self.timeSpan = [i for i in range(0,1)]
+        self.generators = [i for i in range(1,len(generators)+1)]
+        self.timeSpan = [i for i in range(1,26)]
+        self.loads = [i for i in range(1,len(demand_per_load)+1)]
         self.Pmax = {}
         self.Pmin = {}
         self.Max_up_reserve = {}
@@ -18,11 +19,12 @@ class InputData:
         self.wind = {}
         self.bid_offers = bid_offers
         self.demand = demand
-        self.demand_bid_price = [] #Librería en funcion de cada generador y tiempo asociado a un precio
+        self.demand_bid_price = [] 
         self.demand_per_load = demand_per_load
 
         #Adjust demand
         num_hours = len(self.timeSpan)
+        num_days = num_hours // 24
         if num_hours <= 24:
             factor = 24 / num_hours
             adjusted_demand = [self.demand[int(i * factor)] for i in range(num_hours)]
@@ -33,7 +35,7 @@ class InputData:
 
         # Populate the dictionaries with data from the generators input
         for gen in generators:
-            unit_id = gen['Unit #'] - 1
+            unit_id = gen['Unit #']
             self.Pmax[unit_id] = gen['Pmax (MW)']
             self.Pmin[unit_id] = gen['Pmin (MW)']
             self.Max_up_reserve[unit_id] = gen['R+ (MW)']
@@ -44,28 +46,29 @@ class InputData:
             self.RD[unit_id] = gen['RD (MW/h)']
             self.wind[unit_id] = gen['wind']
         
-        sorted_indices = sorted(range(len(self.bid_offers)), key=lambda k: self.bid_offers[k])
-        sorted_bid_offers = [self.bid_offers[i] for i in sorted_indices]
+        #sorted_indices = sorted(range(len(self.bid_offers)), key=lambda k: self.bid_offers[k])
+        sorted_keys = sorted(bid_offers, key=lambda k: bid_offers[k])
+        #sorted_bid_offers = [self.bid_offers[i] for i in sorted_indices]
         
         sorted_power = []
         
         for t, _ in enumerate(self.timeSpan):
-            demand_bid_price = []
-            for i in sorted_indices:  
-                if not self.wind[i]:
-                    sorted_power.append(self.Pmax[i])
+            demand_bid_price = {}
+            for key in sorted_keys:  
+                if not self.wind[key]:
+                    sorted_power.append(self.Pmax[key])
                 else:
-                    sorted_power.append(self.Pmax[i][t])
+                    sorted_power.append(self.Pmax[key][t - 24 * num_days])
             accumulated_power = 0
-            for i, power in enumerate(sorted_power):
+            for key, power in zip(sorted_keys, sorted_power):
                 accumulated_power += power
                 if accumulated_power >= self.demand[t]:
-                    last_bid_demand = sorted_bid_offers[i+1]
+                    last_bid_demand = self.bid_offers[key]
                     break
             first_bid_demand = 10 * last_bid_demand
             exponential_increment = np.log(first_bid_demand/last_bid_demand) / (len(demand_per_load) - 1)
-            for i, load in enumerate(demand_per_load):
-                demand_bid_price.append(last_bid_demand * np.exp(exponential_increment * i))
+            for i, (key, load) in enumerate(demand_per_load.items()):
+                demand_bid_price[key] = last_bid_demand * np.exp(exponential_increment * i)
             self.demand_bid_price.append(demand_bid_price)
             
 
@@ -94,10 +97,11 @@ generators = [
 ]
 
 #!!!! CHANGE VALUES
-bid_offers = [
-    13.32, 20.7, 20.93, 26.11, 10.52, 10.52, 6.02, 5.47, 0, 10.52, 10.89, 10.89,
-        6.02, 6.02, 6.02, 6.02, 6.02, 6.02      
-    ] 
+bid_offers = {
+    1: 13.32, 2: 20.7, 3: 20.93, 4: 26.11, 5: 10.52, 6: 10.52, 7: 6.02, 8: 5.47, 9: 0, 10: 10.52, 11: 10.89, 12: 10.89, 
+    13: 0, 14: 0, 15: 0, 16: 0, 17: 0, 18: 0 # Wind farms
+}
+
 
 # System demand values in MW for each hour
 system_demand = [
@@ -107,7 +111,6 @@ system_demand = [
     2464.965, 2623.995, 2650.5, 2650.5, 2544.48, 
     2411.955, 2199.915, 1934.865, 1669.815
 ]
-demand_bid_price = 15 # $/MWh
 
 demand_per_load = {
     1: 3.8, 2: 3.4, 3: 6.3, 4:2.6, 5:2.5, 6:4.8, 7:4.4, 8:6, 9:6.1, 10:6.8, 11:9.3, 12:6.8, 13:11.1, 14:3.5, 15:11.7, 16:6.4, 17:4.5
@@ -115,6 +118,7 @@ demand_per_load = {
 
 if __name__ == "__main__":
     # Use in case you want to access the data directly
+
     input_data = InputData(generators)
 
     # Accessing data for a specific unit
