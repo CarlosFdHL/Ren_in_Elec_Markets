@@ -28,7 +28,7 @@ class Step1_model:
         for g in self.data.generators:
             for t in self.data.timeSpan:
                 self.variables.production = {
-                    (g, t): self.model.addVar(lb=self.data.Pmin[g], ub=self.data.Pmax[g], name=f"Production_{g}")
+                    (g, t): self.model.addVar(name=f"Production_{g}")
                     for g in self.data.generators
                     for t in self.data.timeSpan
                 }
@@ -36,14 +36,22 @@ class Step1_model:
     def build_constraints(self):
         # Create the constraints
 
-        self.constraints.production_upper_limit = {
-            (g, t): self.model.addConstr(self.variables.production[g, t], 
-                                         GRB.LESS_EQUAL, 
-                                         self.data.Pmax[g], 
-                                         name=f"ProductionMAXLimit_{g}")
-            for g in self.data.generators
-            for t in self.data.timeSpan
-        }
+        for g in self.data.generators:
+            for t in self.data.timeSpan:
+                if not self.data.wind[g]:
+                    self.model.addLConstr(
+                        self.variables.production[g, t],
+                        GRB.LESS_EQUAL,
+                        self.data.Pmax[g],
+                        name = f"ProductionMAXLimit_{g}_{t}"
+                    )
+                else:
+                    self.model.addLConstr(
+                        self.variables.production[g, t], 
+                        GRB.LESS_EQUAL, 
+                        self.data.Pmax[g][t],
+                        name = f"ProductionMAXLimit_{g}_{t}"
+                    )
         
         self.constraints.production_lower_limit = {
             (g, t): self.model.addConstr(self.variables.production[g, t], 
@@ -64,11 +72,11 @@ class Step1_model:
         
     def build_objective_function(self):
         # Create the objective function
-
-        demand_cost = gp.quicksum(
-            self.data.demand_bid_price * self.data.demand[t] 
-            for t in self.data.timeSpan
-        )
+        demand_cost = 0
+        for t in self.data.timeSpan:
+            demand_cost += gp.quicksum(self.data.demand_bid_price[t][i] * self.data.demand_per_load[i] 
+                for i in range(len(self.data.demand_per_load)))
+            
         producers_revenue = gp.quicksum(
             self.data.bid_offers[g] * self.variables.production[g, t] 
             for g in self.data.generators 
@@ -89,9 +97,9 @@ class Step1_model:
         print("\nBuilding constraints")
         self.build_constraints()
         
+        self.model.update()
         print(f"Number of variables: {self.model.NumVars}")
         print(f"Number of constraints: {self.model.NumConstrs}")
-        self.model.update()
 
     def save_results(self):
         # Save the results in the results attribute
