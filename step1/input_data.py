@@ -6,7 +6,7 @@ class InputData:
     def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict):  
         # Initialize dictionaries to store the technical data for each generator
         self.generators = [i for i in range(1,len(generators)+1)]
-        self.timeSpan = [i for i in range(1,26)]
+        self.timeSpan = [i for i in range(1,2)]
         self.loads = [i for i in range(1,len(demand_per_load)+1)]
         self.Pmax = {}
         self.Pmin = {}
@@ -94,10 +94,13 @@ generators = [
     {'Unit #': 17, 'Pmax (MW)': wind_CF, 'Pmin (MW)': 0, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 100, 'RD (MW/h)': 100, 'UT (h)': 0, 'DT (h)': 0, 'wind': True},
     {'Unit #': 18, 'Pmax (MW)': wind_CF, 'Pmin (MW)': 0, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 100, 'RD (MW/h)': 100, 'UT (h)': 0, 'DT (h)': 0, 'wind': True}
 ]
-
+for gen in generators:
+    if not gen['wind']:
+        gen['Pmin (MW)'] = 0
+print(generators)
 #!!!! CHANGE VALUES
 bid_offers = {
-    1: 13.32, 2: 20.7, 3: 20.93, 4: 26.11, 5: 10.52, 6: 10.52, 7: 6.02, 8: 5.47, 9: 0, 10: 10.52, 11: 10.89, 12: 10.89, 
+    1: 13.32, 2: 13.32, 3: 20.7, 4: 20.93, 5: 26.11, 6: 10.52, 7: 10.52, 8: 6.02, 9: 5.47, 10: 0, 11: 10.52, 12: 10.89, 
     13: 0, 14: 0, 15: 0, 16: 0, 17: 0, 18: 0 # Wind farms
 }
 

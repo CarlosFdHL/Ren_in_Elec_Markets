@@ -26,11 +26,17 @@ class Step1_model:
         # Create the variables
 
         self.variables.production = {
-            (g, t): self.model.addVar(name=f"Production_{g}")
+            (g, t): self.model.addVar(name=f"Production_{g}_{t}")
             for g in self.data.generators
             for t in self.data.timeSpan
         }
-                    
+        """
+        self.variables.on = {
+            (g, t): self.model.addVar(vtype=GRB.BINARY, name=f"on_{g}_{t}")
+            for g in self.data.generators
+            for t in self.data.timeSpan
+        }
+          """          
     def build_constraints(self):
         # Create the constraints
         num_hours = len(self.data.timeSpan)
@@ -38,15 +44,15 @@ class Step1_model:
         for g in self.data.generators:
             for t_index, t in enumerate(self.data.timeSpan):
                 if not self.data.wind[g]:
-                    self.model.addLConstr(
-                        self.variables.production[g, t],
+                    self.model.addConstr(
+                        self.variables.production[g, t], #* self.variables.on[g, t],
                         GRB.LESS_EQUAL,
                         self.data.Pmax[g],
                         name = f"ProductionMAXLimit_{g}_{t}"
                     )
                 else:
-                    self.model.addLConstr(
-                        self.variables.production[g, t], 
+                    self.model.addConstr(
+                        self.variables.production[g, t], #* self.variables.on[g, t], 
                         GRB.LESS_EQUAL, 
                         self.data.Pmax[g][t_index - 24 * num_days],
                         name = f"ProductionMAXLimit_{g}_{t}"
@@ -55,16 +61,16 @@ class Step1_model:
         self.constraints.production_lower_limit = {
             (g, t): self.model.addConstr(self.variables.production[g, t], 
                                          GRB.GREATER_EQUAL, 
-                                         self.data.Pmin[g], 
+                                         self.data.Pmin[g] ,#*  self.variables.on[g, t], 
                                          name=f"ProductionMINLimit_{g}")
             for g in self.data.generators
             for t in self.data.timeSpan
         }
 
         self.constraints.demand = {
-            t: self.model.addConstr(gp.quicksum(self.variables.production[g, t] for g in self.data.generators), 
+            t: self.model.addLConstr(gp.quicksum(self.variables.production[g, t] for g in self.data.generators), 
                                     GRB.EQUAL, 
-                                    self.data.demand[i], 
+                                    self.data.demand[t-1], 
                                     name=f"SystemDemandHour_{t}")
             for i, t in enumerate(self.data.timeSpan)
         } 
@@ -73,7 +79,7 @@ class Step1_model:
         # Create the objective function
         demand_cost = 0
         for index, t in enumerate(self.data.timeSpan):
-            demand_cost += gp.quicksum(self.data.demand_bid_price[index][key] * demand
+            demand_cost += gp.quicksum(self.data.demand_bid_price[index][key] * demand * 0.01 * self.data.demand[index]
                 for (key, demand) in self.data.demand_per_load.items()
             )
             
@@ -82,7 +88,8 @@ class Step1_model:
             for g in self.data.generators 
             for t in self.data.timeSpan
         )
-        self.model.setObjective(demand_cost - producers_revenue, GRB.MAXIMIZE)
+        #self.model.setObjective(demand_cost - producers_revenue, GRB.MAXIMIZE)
+        self.model.setObjective(producers_revenue, GRB.MINIMIZE)
 
     def build_model(self):
         # Creates the model and calls the functions to build the variables, constraints, and objective function
@@ -119,9 +126,11 @@ class Step1_model:
         self.results.profit_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
         self.results.utility = pd.DataFrame(index=self.data.timeSpan, columns=self.data.demand_per_load)
 
+        self.results.sum_power = 0
         for t, constraint in self.constraints.demand.items():
             for g in self.data.generators:
                 self.results.production_data.at[t, g] = self.variables.production[g, t].X
+                self.results.sum_power += self.variables.production[g, t].X
                 self.results.profit_data.at[t, g] = constraint.Pi * self.variables.production[g, t].X
             
         for t_index, t in enumerate(self.data.timeSpan):
@@ -130,7 +139,7 @@ class Step1_model:
 
     def print_results(self):
         # Print the results of the optimization problem
-
+        print("\nModel Status: ", self.model.status)
         print("\nPrinting results")
         
         print("\n1.-The market clearing price for each hour:")
@@ -141,6 +150,7 @@ class Step1_model:
 
         print("\nProduction for each generator")
         print(self.results.production_data)
+        print("Sum of all generations: ",self.results.sum_power, "MW")
 
         print("\n3.-Profit for each producer")
         print(self.results.profit_data)
@@ -149,6 +159,11 @@ class Step1_model:
         pd.set_option('display.max_columns', None)
         print(self.results.utility)
         pd.reset_option('display.max_columns')
+
+        for t, constraint in self.constraints.demand.items():
+            slack = constraint.getAttr("Pi")  # Accediendo al atributo Slack de la restricción
+            print(f"Hour {t}: Slack = {slack} $/MWh")
+
         
 
     def run(self):
