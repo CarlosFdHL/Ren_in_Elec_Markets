@@ -94,7 +94,10 @@ generators = [
 ]
 
 #!!!! CHANGE VALUES
-bid_offers = [13.32, 20.7, 20.93, 26.11, 10.52, 10.52, 6.02, 5.47, 0, 10.52, 10.89, 10.89]  # Adjusted to match the number of units
+bid_offers = [
+    13.32, 20.7, 20.93, 26.11, 10.52, 10.52, 6.02, 5.47, 0, 10.52, 10.89, 10.89,
+        6.02, 6.02, 6.02, 6.02, 6.02, 6.02      
+    ] 
 
 # System demand values in MW for each hour
 system_demand = [
