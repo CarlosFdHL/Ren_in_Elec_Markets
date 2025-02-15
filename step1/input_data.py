@@ -46,10 +46,7 @@ class InputData:
             self.RD[unit_id] = gen['RD (MW/h)']
             self.wind[unit_id] = gen['wind']
         
-        #sorted_indices = sorted(range(len(self.bid_offers)), key=lambda k: self.bid_offers[k])
         sorted_keys = sorted(bid_offers, key=lambda k: bid_offers[k])
-        #sorted_bid_offers = [self.bid_offers[i] for i in sorted_indices]
-        
         sorted_power = []
         
         for t, _ in enumerate(self.timeSpan):
@@ -73,7 +70,9 @@ class InputData:
             
 
 # Example data as you might get from a database or input file
-wind_CF = [0.584,0.609,0.616,0.612,0.614,0.617,0.607,0.611,0.607,0.625,0.644,0.658,0.661,0.656,0.674,0.702,0.717,0.726,0.742,0.773,0.778,0.763,0.742,0.743] * 200 # Capacity factor pu (P.nominal = 200 MW)
+wind_CF = [0.584,0.609,0.616,0.612,0.614,0.617,0.607,0.611,0.607,0.625,0.644,0.658,0.661,0.656,0.674,0.702,0.717,0.726,0.742,0.773,0.778,0.763,0.742,0.743] # Capacity factor pu (P.nominal = 200 MW)
+wind_CF = [cf * 200 for cf in wind_CF]
+print(len(wind_CF))
 generators = [
     {'Unit #': 1, 'Pmax (MW)': 152, 'Pmin (MW)': 30.4, 'R+ (MW)': 40, 'R- (MW)': 40, 'RU (MW/h)': 120, 'RD (MW/h)': 120, 'UT (h)': 8, 'DT (h)': 4, 'wind': False},
     {'Unit #': 2, 'Pmax (MW)': 152, 'Pmin (MW)': 30.4, 'R+ (MW)': 40, 'R- (MW)': 40, 'RU (MW/h)': 120, 'RD (MW/h)': 120, 'UT (h)': 8, 'DT (h)': 4, 'wind': False},

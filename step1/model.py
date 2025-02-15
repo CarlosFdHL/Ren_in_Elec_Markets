@@ -25,19 +25,18 @@ class Step1_model:
     def build_variables(self):
         # Create the variables
 
-        for g in self.data.generators:
-            for t in self.data.timeSpan:
-                self.variables.production = {
-                    (g, t): self.model.addVar(name=f"Production_{g}")
-                    for g in self.data.generators
-                    for t in self.data.timeSpan
-                }
+        self.variables.production = {
+            (g, t): self.model.addVar(name=f"Production_{g}")
+            for g in self.data.generators
+            for t in self.data.timeSpan
+        }
                     
     def build_constraints(self):
         # Create the constraints
-
+        num_hours = len(self.data.timeSpan)
+        num_days = num_hours // 24
         for g in self.data.generators:
-            for t in self.data.timeSpan:
+            for t_index, t in enumerate(self.data.timeSpan):
                 if not self.data.wind[g]:
                     self.model.addLConstr(
                         self.variables.production[g, t],
@@ -49,7 +48,7 @@ class Step1_model:
                     self.model.addLConstr(
                         self.variables.production[g, t], 
                         GRB.LESS_EQUAL, 
-                        self.data.Pmax[g][t],
+                        self.data.Pmax[g][t_index - 24 * num_days],
                         name = f"ProductionMAXLimit_{g}_{t}"
                     )
         
@@ -73,9 +72,10 @@ class Step1_model:
     def build_objective_function(self):
         # Create the objective function
         demand_cost = 0
-        for t in self.data.timeSpan:
-            demand_cost += gp.quicksum(self.data.demand_bid_price[t][i] * self.data.demand_per_load[i+1] 
-                for i in range(len(self.data.demand_per_load)))
+        for index, t in enumerate(self.data.timeSpan):
+            demand_cost += gp.quicksum(self.data.demand_bid_price[index][key] * demand
+                for (key, demand) in self.data.demand_per_load.items()
+            )
             
         producers_revenue = gp.quicksum(
             self.data.bid_offers[g] * self.variables.production[g, t] 
