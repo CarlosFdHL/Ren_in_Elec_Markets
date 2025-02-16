@@ -121,7 +121,7 @@ demand_per_load = {
 if __name__ == "__main__":
     # Use in case you want to access the data directly
 
-    input_data = InputData(generators)
+    input_data = InputData(generators, bid_offers, system_demand, demand_per_load)
 
     # Accessing data for a specific unit
     print("Generators: ", input_data.generators)
