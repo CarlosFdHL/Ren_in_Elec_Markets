@@ -6,7 +6,7 @@ class InputData:
     def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict):  
         # Initialize dictionaries to store the technical data for each generator
         self.generators = [i for i in range(1,len(generators)+1)]
-        self.timeSpan = [i for i in range(1,2)]
+        self.timeSpan = [i for i in range(1,25)]
         self.loads = [i for i in range(1,len(demand_per_load)+1)]
         self.Pmax = {}
         self.Pmin = {}
@@ -67,12 +67,11 @@ class InputData:
             for i, (key, load) in enumerate(demand_per_load.items()):
                 demand_bid_price[key] = last_bid_demand * np.exp(exponential_increment * i)
             self.demand_bid_price.append(demand_bid_price)
-            
+        print("Demand bid price: ", self.demand_bid_price)
 
 # Example data as you might get from a database or input file
 wind_CF = [0.584,0.609,0.616,0.612,0.614,0.617,0.607,0.611,0.607,0.625,0.644,0.658,0.661,0.656,0.674,0.702,0.717,0.726,0.742,0.773,0.778,0.763,0.742,0.743] # Capacity factor pu (P.nominal = 200 MW)
 wind_CF = [cf * 200 for cf in wind_CF]
-print(len(wind_CF))
 generators = [
     {'Unit #': 1, 'Pmax (MW)': 152, 'Pmin (MW)': 30.4, 'R+ (MW)': 40, 'R- (MW)': 40, 'RU (MW/h)': 120, 'RD (MW/h)': 120, 'UT (h)': 8, 'DT (h)': 4, 'wind': False},
     {'Unit #': 2, 'Pmax (MW)': 152, 'Pmin (MW)': 30.4, 'R+ (MW)': 40, 'R- (MW)': 40, 'RU (MW/h)': 120, 'RD (MW/h)': 120, 'UT (h)': 8, 'DT (h)': 4, 'wind': False},
@@ -97,13 +96,11 @@ generators = [
 for gen in generators:
     if not gen['wind']:
         gen['Pmin (MW)'] = 0
-print(generators)
-#!!!! CHANGE VALUES
+
 bid_offers = {
     1: 13.32, 2: 13.32, 3: 20.7, 4: 20.93, 5: 26.11, 6: 10.52, 7: 10.52, 8: 6.02, 9: 5.47, 10: 0, 11: 10.52, 12: 10.89, 
     13: 0, 14: 0, 15: 0, 16: 0, 17: 0, 18: 0 # Wind farms
 }
-
 
 # System demand values in MW for each hour
 system_demand = [
