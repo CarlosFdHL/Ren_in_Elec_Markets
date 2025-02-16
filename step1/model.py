@@ -140,7 +140,7 @@ class Step1_model:
         }
         self.results.objective = self.model.objVal
         self.results.price = {
-            t: constraint.Pi for t, constraint in self.constraints.demand_equal_production.items()
+            t: -constraint.Pi for t, constraint in self.constraints.demand_equal_production.items()
         }
 
         self.results.production_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
@@ -152,7 +152,7 @@ class Step1_model:
             for g in self.data.generators:
                 self.results.production_data.at[t, g] = self.variables.production[g, t].X
                 self.results.sum_power += self.variables.production[g, t].X
-                self.results.profit_data.at[t, g] = constraint.Pi * self.variables.production[g, t].X
+                self.results.profit_data.at[t, g] = self.results.price[t] * self.variables.production[g, t].X
             
         for t_index, t in enumerate(self.data.timeSpan):
             for key, power_consumption in self.data.demand_per_load.items():   
