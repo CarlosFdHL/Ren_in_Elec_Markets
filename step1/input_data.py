@@ -86,7 +86,7 @@ generators = [
     {'Unit #': 10, 'Pmax (MW)': 300, 'Pmin (MW)': 300, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 300, 'RD (MW/h)': 300, 'UT (h)': 0, 'DT (h)': 0, 'wind': False},
     {'Unit #': 11, 'Pmax (MW)': 310, 'Pmin (MW)': 108.5, 'R+ (MW)': 60, 'R- (MW)': 60, 'RU (MW/h)': 180, 'RD (MW/h)': 180, 'UT (h)': 8, 'DT (h)': 8, 'wind': False},
     {'Unit #': 12, 'Pmax (MW)': 350, 'Pmin (MW)': 140, 'R+ (MW)': 40, 'R- (MW)': 40, 'RU (MW/h)': 240, 'RD (MW/h)': 240, 'UT (h)': 8, 'DT (h)': 8, 'wind': False},
-    #6 additional Wind turbines
+    #6 additional Wind farms
     {'Unit #': 13, 'Pmax (MW)': wind_CF, 'Pmin (MW)': 0, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 100, 'RD (MW/h)': 100, 'UT (h)': 0, 'DT (h)': 0, 'wind': True},
     {'Unit #': 14, 'Pmax (MW)': wind_CF, 'Pmin (MW)': 0, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 100, 'RD (MW/h)': 100, 'UT (h)': 0, 'DT (h)': 0, 'wind': True},
     {'Unit #': 15, 'Pmax (MW)': wind_CF, 'Pmin (MW)': 0, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 100, 'RD (MW/h)': 100, 'UT (h)': 0, 'DT (h)': 0, 'wind': True},

@@ -160,9 +160,6 @@ class Step1_model:
         print(self.results.utility)
         pd.reset_option('display.max_columns')
 
-        for t, constraint in self.constraints.demand.items():
-            slack = constraint.getAttr("Pi")  # Accediendo al atributo Slack de la restricción
-            print(f"Hour {t}: Slack = {slack} $/MWh")
 
         
 
