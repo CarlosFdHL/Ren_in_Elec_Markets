@@ -1,4 +1,4 @@
-gurobipy=11.0.3
+gurobipy==11.0.3
 matplotlib
 numpy
 pandas
