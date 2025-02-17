@@ -3,11 +3,12 @@ import numpy as np
 
 # The class is used to instantiate an object that is passed to the model class to build the optimization model.
 class InputData:
-    def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict):  
+    def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict, bus_reactance: dict, bus_capacity: dict):  
         # Initialize dictionaries to store the technical data for each generator
         self.generators = [i for i in range(1,len(generators)+1)]
         self.timeSpan = [i for i in range(1,2)]
         self.loads = [i for i in range(1,len(demand_per_load)+1)]
+        self.nodes = [i for i in range(1,25)]
         self.Pmax = {}
         self.Pmin = {}
         self.Max_up_reserve = {}
@@ -21,6 +22,8 @@ class InputData:
         self.demand = demand
         self.demand_bid_price = [] 
         self.demand_per_load = demand_per_load
+        self.bus_reactance = bus_reactance
+        self.bus_capacity = bus_capacity
 
         #Adjust demand
         num_hours = len(self.timeSpan)
@@ -64,7 +67,7 @@ class InputData:
                     break
             first_bid_demand = 10 * last_bid_demand
             exponential_increment = np.log(first_bid_demand/last_bid_demand) / (len(demand_per_load) - 1)
-            for i, (key, load) in enumerate(demand_per_load.items()):
+            for i, ((key, _), load) in enumerate(demand_per_load.items()):
                 demand_bid_price[key] = last_bid_demand * np.exp(exponential_increment * i)
             self.demand_bid_price.append(demand_bid_price)
         print("Demand bid price: ", self.demand_bid_price)
@@ -85,7 +88,7 @@ generators = [
     {'Unit #': 9, 'Node': 21, 'Pmax (MW)': 400, 'Pmin (MW)': 100, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 280, 'RD (MW/h)': 280, 'UT (h)': 1, 'DT (h)': 1, 'wind': False},
     {'Unit #': 10, 'Node': 22, 'Pmax (MW)': 300, 'Pmin (MW)': 300, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 300, 'RD (MW/h)': 300, 'UT (h)': 0, 'DT (h)': 0, 'wind': False},
     {'Unit #': 11, 'Node': 23, 'Pmax (MW)': 310, 'Pmin (MW)': 108.5, 'R+ (MW)': 60, 'R- (MW)': 60, 'RU (MW/h)': 180, 'RD (MW/h)': 180, 'UT (h)': 8, 'DT (h)': 8, 'wind': False},
-    {'Unit #': 12, 'Node': 23, 'Pmax (MW)': 350, 'Pmin (MW)': 140, 'R+ (MW)': 40, 'R- (MW)': 40, 'RU (MW/h)': 240, 'RD (MW/h)': 240, 'UT (h)': 8, 'DT (h)': 8, 'wind': False}
+    {'Unit #': 12, 'Node': 23, 'Pmax (MW)': 350, 'Pmin (MW)': 140, 'R+ (MW)': 40, 'R- (MW)': 40, 'RU (MW/h)': 240, 'RD (MW/h)': 240, 'UT (h)': 8, 'DT (h)': 8, 'wind': False},
     #6 additional Wind farms
     {'Unit #': 13, 'Node': 3,'Pmax (MW)': wind_CF, 'Pmin (MW)': 0, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 100, 'RD (MW/h)': 100, 'UT (h)': 0, 'DT (h)': 0, 'wind': True},
     {'Unit #': 14, 'Node': 5,'Pmax (MW)': wind_CF, 'Pmin (MW)': 0, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 100, 'RD (MW/h)': 100, 'UT (h)': 0, 'DT (h)': 0, 'wind': True},
@@ -114,12 +117,12 @@ system_demand = [
 ]
 
 demand_per_load = {
-    1: 3.8, 2: 3.4, 3: 6.3, 4:2.6, 5:2.5, 6:4.8, 7:4.4, 8:6, 9:6.1, 10:6.8, 11:9.3, 12:6.8, 13:11.1, 14:3.5, 15:11.7, 16:6.4, 17:4.5
+    (1, 1): 3.8, (2, 2): 3.4, (3, 3): 6.3, (4, 4):2.6, (5, 5):2.5, (6, 6):4.8, (7, 7):4.4, (8, 8):6, (9, 9):6.1, (10, 10):6.8, (11, 13):9.3, (12, 14):6.8, (13, 15):11.1, (14, 16):3.5, (15, 18):11.7, (16, 19):6.4, (17, 20):4.5
 }
 
 #tranmission lines Table 5 
 # Dictionary for Reactance (p.u.)
-reactance = {
+bus_reactance = {
     (1, 2): 0.0146, (1, 3): 0.2253, (1, 5): 0.0907, (2, 4): 0.1356, (2, 6): 0.205,
     (3, 9): 0.1271, (3, 24): 0.084, (4, 9): 0.111, (5, 10): 0.094, (6, 10): 0.0642,
     (7, 8): 0.0652, (8, 9): 0.1762, (8, 10): 0.1762, (9, 11): 0.084, (9, 12): 0.084,
@@ -130,7 +133,7 @@ reactance = {
 }
 
 # Dictionary for Capacity (MVA)
-capacity = {
+bus_capacity = {
     (1, 2): 175, (1, 3): 175, (1, 5): 350, (2, 4): 175, (2, 6): 175,
     (3, 9): 175, (3, 24): 400, (4, 9): 175, (5, 10): 350, (6, 10): 175,
     (7, 8): 350, (8, 9): 175, (8, 10): 175, (9, 11): 400, (9, 12): 400,
