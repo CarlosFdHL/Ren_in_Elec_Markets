@@ -6,7 +6,7 @@ class InputData:
     def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict):  
         # Initialize dictionaries to store the technical data for each generator
         self.generators = [i for i in range(1,len(generators)+1)]
-        self.timeSpan = [i for i in range(1,2)]
+        self.timeSpan = [i for i in range(1,25)]
         self.loads = [i for i in range(1,len(demand_per_load)+1)]
         self.Pmax = {}
         self.Pmin = {}
@@ -21,6 +21,11 @@ class InputData:
         self.demand = demand
         self.demand_bid_price = [] 
         self.demand_per_load = demand_per_load
+        self.max_battery_storage = 3000 # MWh
+        self.max_battery_charging_power = 300 # MW
+        self.max_battery_discharging_power = 300 # MW
+        self.battery_change_efficiency = 0.8
+        self.battery_discharge_efficiency = 0.9
 
         #Adjust demand
         num_hours = len(self.timeSpan)
@@ -67,7 +72,6 @@ class InputData:
             for i, (key, load) in enumerate(demand_per_load.items()):
                 demand_bid_price[key] = last_bid_demand * np.exp(exponential_increment * i)
             self.demand_bid_price.append(demand_bid_price)
-        print("Demand bid price: ", self.demand_bid_price)
 
 # Example data as you might get from a database or input file
 wind_CF = [0.584,0.609,0.616,0.612,0.614,0.617,0.607,0.611,0.607,0.625,0.644,0.658,0.661,0.656,0.674,0.702,0.717,0.726,0.742,0.773,0.778,0.763,0.742,0.743] # Capacity factor pu (P.nominal = 200 MW)

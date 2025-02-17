@@ -86,9 +86,9 @@ class Step1_model:
         }
 
         self.constraints.demand_equal_production = {
-            t: self.model.addConstr(gp.quicksum(self.variables.production[g, t] for g in self.data.generators), 
+            t:  self.model.addConstr( - gp.quicksum(self.variables.production[g, t] for g in self.data.generators), 
                                     GRB.EQUAL, 
-                                    gp.quicksum(self.variables.demand[d, t] for d in self.data.loads), 
+                                     - gp.quicksum(self.variables.demand[d, t] for d in self.data.loads), 
                                     name=f"SystemDemandEqualProductionHour_{t}")
             for t in self.data.timeSpan
         } 
@@ -140,7 +140,7 @@ class Step1_model:
         }
         self.results.objective = self.model.objVal
         self.results.price = {
-            t: -constraint.Pi for t, constraint in self.constraints.demand_equal_production.items()
+            t: constraint.Pi for t, constraint in self.constraints.demand_equal_production.items()
         }
 
         self.results.production_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)

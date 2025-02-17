@@ -10,8 +10,8 @@ class Expando(object):
     '''
     pass
 
-class Step1_model:
-    # Step1_model is a class that represents the optimization model. It receives an instance of the InputData class to build the optimization model and solve it.
+class Step2_model:
+    # Step2_model is a class that represents the optimization model. It receives an instance of the InputData class to build the optimization model and solve it.
 
     def __init__(self, input_data: InputData):
         # Initialize model attributes
@@ -34,6 +34,18 @@ class Step1_model:
             (d, t): self.model.addVar(lb = 0, name=f"Demand_{t}")
             for t in self.data.timeSpan
             for d in self.data.loads
+        }
+        self.variables.stored_energy = {
+            t: self.model.addVar(lb = 0, ub = self.data.max_battery_storage, name=f"StoredEnergy_{t}")
+            for t in self.data.timeSpan    
+        }
+        self.variables.battery_charging_power = {
+            t: self.model.addVar(lb = 0, ub = self.data.max_battery_charging_power, name=f"BatteryChargingPower_{t}")
+            for t in self.data.timeSpan
+        }
+        self.variables.battery_discharging_power = {
+            t: self.model.addVar(lb = 0, ub = self.data.max_battery_discharging_power, name=f"BatteryDischargingPower_{t}")
+            for t in self.data.timeSpan
         }
         """
         self.variables.on = {
@@ -86,12 +98,42 @@ class Step1_model:
         }
 
         self.constraints.demand_equal_production = {
-            t: self.model.addConstr(gp.quicksum(self.variables.production[g, t] for g in self.data.generators), 
+            t: self.model.addConstr( - (gp.quicksum(self.variables.production[g, t] for g in self.data.generators) - 
+                                    (self.variables.battery_charging_power[t] * self.data.battery_change_efficiency) -  
+                                    self.variables.battery_discharging_power[t] * self.data.battery_discharge_efficiency),
                                     GRB.EQUAL, 
-                                    gp.quicksum(self.variables.demand[d, t] for d in self.data.loads), 
+                                    - (gp.quicksum(self.variables.demand[d, t] for d in self.data.loads)), 
                                     name=f"SystemDemandEqualProductionHour_{t}")
             for t in self.data.timeSpan
         } 
+
+        self.constraints.ramp_up = {
+            (g, t): self.model.addConstr(self.variables.production[g, t] - self.variables.production[g, t-1],
+                                         GRB.LESS_EQUAL,
+                                        self.data.RU[g],
+                                        name=f"RampUp_{g}_{t}")
+            for g in self.data.generators
+            for t in self.data.timeSpan if t > 1
+        }
+
+        self.constraints.ramp_down = {
+            (g, t): self.model.addConstr(self.variables.production[g, t-1] - self.variables.production[g, t],
+                                         GRB.LESS_EQUAL,
+                                        self.data.RD[g],
+                                        name=f"RampDown_{g}_{t}")
+            for g in self.data.generators
+            for t in self.data.timeSpan if t > 1
+        }
+
+        self.constraints.battery_energy_balance = {
+            t: self.model.addConstr(self.variables.stored_energy[t],
+                                    GRB.EQUAL,
+                                    self.variables.stored_energy[t-1] + self.variables.battery_charging_power[t] * self.data.battery_change_efficiency
+                                    - self.variables.battery_discharging_power[t] /self.data.battery_discharge_efficiency
+            )
+            for t in self.data.timeSpan if t > 1
+        }
+        
         
     def build_objective_function(self):
         # Create the objective function
@@ -140,7 +182,7 @@ class Step1_model:
         }
         self.results.objective = self.model.objVal
         self.results.price = {
-            t: -constraint.Pi for t, constraint in self.constraints.demand_equal_production.items()
+            t: constraint.Pi for t, constraint in self.constraints.demand_equal_production.items()
         }
 
         self.results.production_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
