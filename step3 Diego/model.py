@@ -142,6 +142,50 @@ class Step1_model:
         print(f"Number of variables: {self.model.NumVars}")
         print(f"Number of constraints: {self.model.NumConstrs}")
 
+
+
+    def compute_zonal_prices(self):
+        # Define zone_mapping
+        zone_mapping = self.data.zone_mapping
+       
+        # Compute zonal prices by averaging nodal prices within each zone
+        zone_prices = {}
+
+        for zone in set(zone_mapping.values()):
+            nodes_in_zone = [n for n, z in zone_mapping.items() if z == zone]
+            nodal_prices = [self.results.price[n] for n in nodes_in_zone if n in self.results.price]
+
+            # Compute the average price for the zone
+            zone_prices[zone] = sum(nodal_prices) / len(nodal_prices) if nodal_prices else 0
+
+        self.results.zonal_price = zone_prices
+
+        print("\nZonal Market Prices:")
+        for zone, price in zone_prices.items():
+            print(f"{zone}: {price:.2f} $/MWh")
+
+
+def compute_atc(self):
+    atc = {}
+    zone_mapping = self.data.zone_mapping
+        
+    # Sum up capacities of all lines connecting nodes from different zones
+    for (from_node, to_node), capacity in self.data.bus_capacity.items():
+        zone_from = zone_mapping[from_node]
+        zone_to = zone_mapping[to_node]
+
+        if zone_from != zone_to:
+            atc_key = (zone_from, zone_to)
+            atc[atc_key] = atc.get(atc_key, 0) + capacity
+
+    self.results.atc = atc
+
+    print("\nAvailable Transfer Capacities (ATC) Between Zones:")
+    for (zone_from, zone_to), capacity in atc.items():
+        print(f"{zone_from} → {zone_to}: {capacity} MVA")
+
+
+
     def save_results(self):
         # Save the results in the results attribute
 
@@ -170,6 +214,14 @@ class Step1_model:
         for t_index, t in enumerate(self.data.timeSpan):
             for key in self.data.loads: 
                 self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.price[t]) * self.variables.demand[key, t].X
+
+
+    # Compute zonal prices
+    self.compute_zonal_prices()
+
+    # Compute Available Transfer Capacities (ATC)
+    self.compute_atc()
+    
 
     def print_results(self):
         # Print the results of the optimization problem
