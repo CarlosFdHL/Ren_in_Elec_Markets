@@ -10,7 +10,7 @@ if __name__ == "__main__":
     print("End of main.py")
 """
 
-from input_data import InputData
+from input_data import *
 from model import Step1_model
 
 def run_model(input_data):
