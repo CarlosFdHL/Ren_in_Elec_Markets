@@ -3,7 +3,7 @@ import numpy as np
 
 # The class is used to instantiate an object that is passed to the model class to build the optimization model.
 class InputData:
-    def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict):  
+    def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict,zonal_mapping: dict):  
         # Initialize dictionaries to store the technical data for each generator
         self.generators = [i for i in range(1,len(generators)+1)]
         self.timeSpan = [i for i in range(1,2)]
@@ -21,6 +21,9 @@ class InputData:
         self.demand = demand
         self.demand_bid_price = [] 
         self.demand_per_load = demand_per_load
+        
+        
+
 
         #Adjust demand
         num_hours = len(self.timeSpan)
@@ -139,6 +142,20 @@ capacity = {
     (16, 17): 500, (17, 18): 500, (17, 22): 500, (18, 21): 1000, (19, 20): 1000,
     (20, 23): 1000, (21, 22): 500
 }
+
+# Zonal Framework 
+# Assign nodes to zones
+zone_mapping = {
+    1: "Zone A", 2: "Zone A", 3: "Zone A", 4: "Zone A",
+    5: "Zone A", 6: "Zone A", 7: "Zone A", 8: "Zone A",
+    9: "Zone B", 10: "Zone B", 11: "Zone B", 12: "Zone B",
+    13: "Zone B", 14: "Zone B", 15: "Zone B", 16: "Zone B",
+    17: "Zone C", 18: "Zone C", 19: "Zone C", 20: "Zone C", 
+    21: "Zone C", 22: "Zone C", 23: "Zone C", 24: "Zone C"
+}
+
+
+
 
 if __name__ == "__main__":
     # Use in case you want to access the data directly
