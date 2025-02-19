@@ -17,6 +17,7 @@ class Step1_model:
         # Initialize model attributes
 
         self.data = input_data
+        self.zone_mapping = self.data.zone_mapping  # Define zone mapping 
         self.variables = Expando()
         self.constraints = Expando()
         self.results = Expando()
@@ -145,14 +146,12 @@ class Step1_model:
 
 
     def compute_zonal_prices(self):
-        # Define zone_mapping
-        zone_mapping = self.data.zone_mapping
        
         # Compute zonal prices by averaging nodal prices within each zone
         zone_prices = {}
 
-        for zone in set(zone_mapping.values()):
-            nodes_in_zone = [n for n, z in zone_mapping.items() if z == zone]
+        for zone in set(self.zone_mapping.values()): 
+            nodes_in_zone = [n for n, z in self.zone_mapping.items() if z == zone]
             nodal_prices = [self.results.price[n] for n in nodes_in_zone if n in self.results.price]
 
             # Compute the average price for the zone
@@ -167,12 +166,11 @@ class Step1_model:
 
 def compute_atc(self):
     atc = {}
-    zone_mapping = self.data.zone_mapping
         
     # Sum up capacities of all lines connecting nodes from different zones
     for (from_node, to_node), capacity in self.data.bus_capacity.items():
-        zone_from = zone_mapping[from_node]
-        zone_to = zone_mapping[to_node]
+        zone_from = self.zone_mapping[from_node]
+        zone_to = self.zone_mapping[to_node]
 
         if zone_from != zone_to:
             atc_key = (zone_from, zone_to)
@@ -203,7 +201,7 @@ def compute_atc(self):
         self.results.production_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
         self.results.profit_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
         self.results.utility = pd.DataFrame(index=self.data.timeSpan, columns=self.data.loads)
-
+        
         self.results.sum_power = 0
         for t, constraint in self.constraints.demand_equal_production.items():
             for g in self.data.generators:

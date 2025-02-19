@@ -3,7 +3,7 @@ import numpy as np
 
 # The class is used to instantiate an object that is passed to the model class to build the optimization model.
 class InputData:
-    def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict,zonal_mapping: dict):  
+    def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict, bus_reactance: dict, bus_capacity: dict,zone_mapping: dict):   
         # Initialize dictionaries to store the technical data for each generator
         self.generators = [i for i in range(1,len(generators)+1)]
         self.timeSpan = [i for i in range(1,2)]
@@ -21,7 +21,9 @@ class InputData:
         self.demand = demand
         self.demand_bid_price = [] 
         self.demand_per_load = demand_per_load
-        
+        self.bus_reactance = bus_reactance  # Store bus_reactance
+        self.bus_capacity = bus_capacity  # Store bus_capacity
+        self.zone_mapping = zone_mapping  # Store zone_mapping
         
 
 
@@ -88,7 +90,7 @@ generators = [
     {'Unit #': 9, 'Node': 21, 'Pmax (MW)': 400, 'Pmin (MW)': 100, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 280, 'RD (MW/h)': 280, 'UT (h)': 1, 'DT (h)': 1, 'wind': False},
     {'Unit #': 10, 'Node': 22, 'Pmax (MW)': 300, 'Pmin (MW)': 300, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 300, 'RD (MW/h)': 300, 'UT (h)': 0, 'DT (h)': 0, 'wind': False},
     {'Unit #': 11, 'Node': 23, 'Pmax (MW)': 310, 'Pmin (MW)': 108.5, 'R+ (MW)': 60, 'R- (MW)': 60, 'RU (MW/h)': 180, 'RD (MW/h)': 180, 'UT (h)': 8, 'DT (h)': 8, 'wind': False},
-    {'Unit #': 12, 'Node': 23, 'Pmax (MW)': 350, 'Pmin (MW)': 140, 'R+ (MW)': 40, 'R- (MW)': 40, 'RU (MW/h)': 240, 'RD (MW/h)': 240, 'UT (h)': 8, 'DT (h)': 8, 'wind': False}
+    {'Unit #': 12, 'Node': 23, 'Pmax (MW)': 350, 'Pmin (MW)': 140, 'R+ (MW)': 40, 'R- (MW)': 40, 'RU (MW/h)': 240, 'RD (MW/h)': 240, 'UT (h)': 8, 'DT (h)': 8, 'wind': False},
     #6 additional Wind farms
     {'Unit #': 13, 'Node': 3,'Pmax (MW)': wind_CF, 'Pmin (MW)': 0, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 100, 'RD (MW/h)': 100, 'UT (h)': 0, 'DT (h)': 0, 'wind': True},
     {'Unit #': 14, 'Node': 5,'Pmax (MW)': wind_CF, 'Pmin (MW)': 0, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 100, 'RD (MW/h)': 100, 'UT (h)': 0, 'DT (h)': 0, 'wind': True},
@@ -122,7 +124,7 @@ demand_per_load = {
 
 #Tranmission lines Table 5 
 # Dictionary for Reactance (p.u.)
-reactance = {
+bus_reactance = {
     (1, 2): 0.0146, (1, 3): 0.2253, (1, 5): 0.0907, (2, 4): 0.1356, (2, 6): 0.205,
     (3, 9): 0.1271, (3, 24): 0.084, (4, 9): 0.111, (5, 10): 0.094, (6, 10): 0.0642,
     (7, 8): 0.0652, (8, 9): 0.1762, (8, 10): 0.1762, (9, 11): 0.084, (9, 12): 0.084,
@@ -133,7 +135,7 @@ reactance = {
 }
 
 # Dictionary for Capacity (MVA)
-capacity = {
+bus_capacity = {
     (1, 2): 175, (1, 3): 175, (1, 5): 350, (2, 4): 175, (2, 6): 175,
     (3, 9): 175, (3, 24): 400, (4, 9): 175, (5, 10): 350, (6, 10): 175,
     (7, 8): 350, (8, 9): 175, (8, 10): 175, (9, 11): 400, (9, 12): 400,
@@ -160,7 +162,7 @@ zone_mapping = {
 if __name__ == "__main__":
     # Use in case you want to access the data directly
 
-    input_data = InputData(generators, bid_offers, system_demand, demand_per_load)
+    input_data = InputData(generators, bid_offers, system_demand, demand_per_load, bus_reactance, bus_capacity,zone_mapping)
 
     # Accessing data for a specific unit
     print("Generators: ", input_data.generators)
@@ -173,3 +175,6 @@ if __name__ == "__main__":
     print(f"Down Time for Unit {unit_id}: {input_data.DT[unit_id]} hours")
     print(f"Ramp Up Rate for Unit {unit_id}: {input_data.RU[unit_id]} MW/h")
     print(f"Ramp Down Rate for Unit {unit_id}: {input_data.RD[unit_id]} MW/h")
+    print("\nZonal Framework:")
+for node, zone in zone_mapping.items():
+    print(f"Node {node} → {zone}")
