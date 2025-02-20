@@ -192,6 +192,7 @@ class Step1_model:
         pd.set_option('display.max_columns', None)
         print(self.results.utility)
         pd.reset_option('display.max_columns')
+        self.model.dispose()
 
 
         
@@ -202,6 +203,7 @@ class Step1_model:
         self.model.optimize()
         if self.model.status == GRB.OPTIMAL:
             self.save_results()
+            
         else:
             raise RuntimeError(f"\nOptimization of {self.model.ModelName} was not successful")
 
