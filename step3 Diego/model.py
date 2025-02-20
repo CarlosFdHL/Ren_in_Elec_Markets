@@ -10,8 +10,8 @@ class Expando(object):
     '''
     pass
 
-class Step1_model:
-    # Step1_model is a class that represents the optimization model. It receives an instance of the InputData class to build the optimization model and solve it.
+class Step3_model:
+    # Step3_model is a class that represents the optimization model. It receives an instance of the InputData class to build the optimization model and solve it.
 
     def __init__(self, input_data: InputData):
         # Initialize model attributes
@@ -79,7 +79,7 @@ class Step1_model:
         self.constraints.demand_upper_limit = {
             (d, t): self.model.addConstr(self.variables.demand[d, t],
                                         GRB.LESS_EQUAL,
-                                        self.data.demand_per_load[d,n ]/100 * self.data.demand[t-1],
+                                        self.data.demand_per_load[d,n]/100 * self.data.demand[t-1],
                                         name=f"DemandUpperLimit_{t}")
             for t in self.data.timeSpan
             for (d, n) in self.data.demand_per_load.keys()
@@ -159,28 +159,20 @@ class Step1_model:
 
         self.results.zonal_price = zone_prices
 
-        print("\nZonal Market Prices:")
-        for zone, price in zone_prices.items():
-            print(f"{zone}: {price:.2f} $/MWh")
 
+    def compute_atc(self):
+        atc = {}
+            
+        # Sum up capacities of all lines connecting nodes from different zones
+        for (from_node, to_node), capacity in self.data.bus_capacity.items():
+            zone_from = self.zone_mapping[from_node]
+            zone_to = self.zone_mapping[to_node]
 
-def compute_atc(self):
-    atc = {}
-        
-    # Sum up capacities of all lines connecting nodes from different zones
-    for (from_node, to_node), capacity in self.data.bus_capacity.items():
-        zone_from = self.zone_mapping[from_node]
-        zone_to = self.zone_mapping[to_node]
+            if zone_from != zone_to:
+                atc_key = (zone_from, zone_to)
+                atc[atc_key] = atc.get(atc_key, 0) + capacity
 
-        if zone_from != zone_to:
-            atc_key = (zone_from, zone_to)
-            atc[atc_key] = atc.get(atc_key, 0) + capacity
-
-    self.results.atc = atc
-
-    print("\nAvailable Transfer Capacities (ATC) Between Zones:")
-    for (zone_from, zone_to), capacity in atc.items():
-        print(f"{zone_from} → {zone_to}: {capacity} MVA")
+        self.results.atc = atc
 
 
 
@@ -213,12 +205,11 @@ def compute_atc(self):
             for key in self.data.loads: 
                 self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.price[t]) * self.variables.demand[key, t].X
 
+        # Compute zonal prices
+        self.compute_zonal_prices()
 
-    # Compute zonal prices
-    self.compute_zonal_prices()
-
-    # Compute Available Transfer Capacities (ATC)
-    self.compute_atc()
+        # Compute Available Transfer Capacities (ATC)
+        self.compute_atc()
     
 
     def print_results(self):
@@ -243,8 +234,14 @@ def compute_atc(self):
         print(self.results.utility)
         pd.reset_option('display.max_columns')
 
+        print("\nZonal Market Prices:")
+        for zone, price in self.results.zonal_price.items():
+            print(f"{zone}: {price:.2f} $/MWh")
 
-        
+        print("\nAvailable Transfer Capacities (ATC) Between Zones:")
+        for (zone_from, zone_to), capacity in self.results.atc.items():
+            print(f"{zone_from} → {zone_to}: {capacity} MVA")
+            
 
     def run(self):
         # Makes sure the model is solved and saves the results

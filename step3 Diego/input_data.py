@@ -8,6 +8,7 @@ class InputData:
         self.generators = [i for i in range(1,len(generators)+1)]
         self.timeSpan = [i for i in range(1,2)]
         self.loads = [i for i in range(1,len(demand_per_load)+1)]
+        self.nodes = [i for i in range(1,25)]
         self.Pmax = {}
         self.Pmin = {}
         self.Max_up_reserve = {}
@@ -69,7 +70,7 @@ class InputData:
                     break
             first_bid_demand = 10 * last_bid_demand
             exponential_increment = np.log(first_bid_demand/last_bid_demand) / (len(demand_per_load) - 1)
-            for i, (key, load) in enumerate(demand_per_load.items()):
+            for i, ((key, _), load) in enumerate(demand_per_load.items()):
                 demand_bid_price[key] = last_bid_demand * np.exp(exponential_increment * i)
             self.demand_bid_price.append(demand_bid_price)
         print("Demand bid price: ", self.demand_bid_price)
@@ -119,7 +120,7 @@ system_demand = [
 ]
 
 demand_per_load = {
-    1: 3.8, 2: 3.4, 3: 6.3, 4:2.6, 5:2.5, 6:4.8, 7:4.4, 8:6, 9:6.1, 10:6.8, 11:9.3, 12:6.8, 13:11.1, 14:3.5, 15:11.7, 16:6.4, 17:4.5
+    (1, 1): 3.8, (2, 2): 3.4, (3, 3): 6.3, (4, 4):2.6, (5, 5):2.5, (6, 6):4.8, (7, 7):4.4, (8, 8):6, (9, 9):6.1, (10, 10):6.8, (11, 13):9.3, (12, 14):6.8, (13, 15):11.1, (14, 16):3.5, (15, 18):11.7, (16, 19):6.4, (17, 20):4.5
 }
 
 #Tranmission lines Table 5 
@@ -176,5 +177,5 @@ if __name__ == "__main__":
     print(f"Ramp Up Rate for Unit {unit_id}: {input_data.RU[unit_id]} MW/h")
     print(f"Ramp Down Rate for Unit {unit_id}: {input_data.RD[unit_id]} MW/h")
     print("\nZonal Framework:")
-for node, zone in zone_mapping.items():
-    print(f"Node {node} → {zone}")
+    for node, zone in zone_mapping.items():
+        print(f"Node {node} → {zone}")
