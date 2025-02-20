@@ -4,7 +4,7 @@ from main import run_model  # Import the refactored function
 
 def modify_capacity(input_data, factor):
     # Create a deep copy of the input data to avoid modifying the original
-    modified_data = copy.deepcopy(input_data)
+    modified_data = input_data
     
     # Modify the bus capacity values by the given factor
     for key in modified_data.bus_capacity:
