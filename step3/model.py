@@ -84,15 +84,15 @@ class Step1_model:
             for (d, n) in self.data.demand_per_load.keys()
         }
 
-        self.constraints.demand_equal_production = {
-            t:  self.model.addConstr( - gp.quicksum(self.variables.production[g, t] for g in self.data.generators), 
-                                    GRB.EQUAL, 
-                                     - gp.quicksum(self.variables.demand[d, t] for d in self.data.loads), 
-                                    name=f"SystemDemandEqualProductionHour_{t}")
-            for t in self.data.timeSpan
-        } 
+        # self.constraints.demand_equal_production = {
+        #     t:  self.model.addConstr( - gp.quicksum(self.variables.production[g, t] for g in self.data.generators), 
+        #                             GRB.EQUAL, 
+        #                              - gp.quicksum(self.variables.demand[d, t] for d in self.data.loads), 
+        #                             name=f"SystemDemandEqualProductionHour_{t}")
+        #     for t in self.data.timeSpan
+        # } 
 
-        self.constraints.bus_balance = {
+        self.constraints.demand_equal_production = {
             (n, t): self.model.addConstr(
                 gp.quicksum(self.variables.demand[d, t] for d in self.data.loads) +
                 gp.quicksum(self.data.bus_reactance[n, m] * (self.variables.angle[n] - self.variables.angle[m])
@@ -153,7 +153,7 @@ class Step1_model:
         }
         self.results.objective = self.model.objVal
         self.results.price = {
-            t: constraint.Pi for t, constraint in self.constraints.demand_equal_production.items()
+            (n, t): constraint.Pi for (n, t), constraint in self.constraints.demand_equal_production.items()
         }
 
         self.results.production_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
@@ -161,23 +161,25 @@ class Step1_model:
         self.results.utility = pd.DataFrame(index=self.data.timeSpan, columns=self.data.loads)
 
         self.results.sum_power = 0
-        for t, constraint in self.constraints.demand_equal_production.items():
+        for (n, t), constraint in self.constraints.demand_equal_production.items():
             for g in self.data.generators:
                 self.results.production_data.at[t, g] = self.variables.production[g, t].X
                 self.results.sum_power += self.variables.production[g, t].X
-                self.results.profit_data.at[t, g] = self.results.price[t] * self.variables.production[g, t].X
+                for n in self.data.nodes:
+                    self.results.profit_data.at[t, g] = self.results.price[n, t] * self.variables.production[g, t].X
             
         for t_index, t in enumerate(self.data.timeSpan):
             for key in self.data.loads: 
-                self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.price[t]) * self.variables.demand[key, t].X
+                for n in self.data.nodes:
+                    self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.price[n, t]) * self.variables.demand[key, t].X
 
     def print_results(self):
         # Print the results of the optimization problem
         print("\nPrinting results")
         
         print("\n1.-The market clearing price for each hour:")
-        for t, price in self.results.price.items():
-            print(f"Hour {t}: {price} $/MWh")
+        for (n, t), price in self.results.price.items():
+            print(f"Hour {t}; Node {n}: {price} $/MWh")
 
         print(f"\n2.-Social welfare of the system: {self.results.objective}")
 
