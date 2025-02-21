@@ -18,9 +18,7 @@ def run_model(input_data):
     model = Step1_model(input_data)
     model.run()
     model.print_results()
-    del model
-    import gc
-    gc.collect() 
+
 
 if __name__ == "__main__":
     # Default input data
