@@ -40,6 +40,11 @@ class Step1_model:
             (n) : self.model.addVar(lb = 0, ub = 360, name=f"Angle_{n}")
             for n in self.data.nodes
         }
+        # self.variables.bus_power_flow = {
+        #     (n, m, t): self.model.addVar(lb = -self.data.bus_capacity[n,m], ub = self.data.bus_capacity[n,m], name=f"BusPowerFlow_{n}_{m}_{t}")
+        #     for (n, m) in self.data.bus_capacity.keys()
+        #     for t in self.data.timeSpan
+        # }
         
     def build_constraints(self):
         # Create the constraints
@@ -94,12 +99,33 @@ class Step1_model:
 
         self.constraints.demand_equal_production = {
             (n, t): self.model.addConstr(
-                gp.quicksum(self.variables.demand[d, t] for d in self.data.loads) +
-                gp.quicksum(self.data.bus_reactance[n, m] * (self.variables.angle[n] - self.variables.angle[m])
-                            for (n, m) in self.data.bus_capacity.keys() if n == n) -
-                gp.quicksum(self.variables.production[g, t] for g in self.data.generators),
+                self.variables.demand[d, t] +
+                gp.quicksum(self.data.bus_reactance[n_, m] * (self.variables.angle[n_] - self.variables.angle[m])
+                            for (n_, m) in self.data.bus_capacity.keys() if n_ == n) -
+                gp.quicksum(self.variables.production[g, t] for g in self.data.generators if self.data.P_node[g] == n),
                 GRB.EQUAL, 0, name=f"BusBalance_{n}_{t}")
-            for n in self.data.nodes
+            for (d, n) in self.data.demand_per_load.keys()
+            for t in self.data.timeSpan
+        }
+
+        
+        self.constraints.max_bus_power = {
+            (n, m, t): self.model.addConstr(
+                1/ self.data.bus_reactance[n, m] * (self.variables.angle[n] - self.variables.angle[m]),
+                GRB.LESS_EQUAL, self.data.bus_capacity[n, m],
+                name=f"MaxBusPower_{n}_{m}_{t}"
+            )
+            for (n, m) in self.data.bus_reactance.keys()
+            for t in self.data.timeSpan
+        }
+
+        self.constraints.min_bus_power = {
+            (n, m, t): self.model.addConstr(
+                1/ self.data.bus_reactance[n, m] * (self.variables.angle[n] - self.variables.angle[m]),
+                GRB.GREATER_EQUAL, -self.data.bus_capacity[n, m],
+                name=f"MaxBusPower_{n}_{m}_{t}"
+            )
+            for (n, m) in self.data.bus_reactance.keys()
             for t in self.data.timeSpan
         }
 
@@ -165,8 +191,8 @@ class Step1_model:
             for g in self.data.generators:
                 self.results.production_data.at[t, g] = self.variables.production[g, t].X
                 self.results.sum_power += self.variables.production[g, t].X
-                for n in self.data.nodes:
-                    self.results.profit_data.at[t, g] = self.results.price[n, t] * self.variables.production[g, t].X
+                #for n in self.data.nodes:
+                    #self.results.profit_data.at[t, g] = self.results.price[n, t] * self.variables.production[g, t].X
             
         for t_index, t in enumerate(self.data.timeSpan):
             for key in self.data.loads: 
@@ -187,8 +213,8 @@ class Step1_model:
         print(self.results.production_data)
         print("Sum of all generations: ",self.results.sum_power, "MW")
 
-        print("\n3.-Profit for each producer")
-        print(self.results.profit_data)
+        # print("\n3.-Profit for each producer")
+        # print(self.results.profit_data)
 
         print("\n4.-Utility of each demand")
         pd.set_option('display.max_columns', None)
