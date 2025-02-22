@@ -202,7 +202,7 @@ class Step1_model:
     def print_results(self):
         # Print the results of the optimization problem
         print("\nPrinting results")
-        
+        pd.set_option('display.max_columns', None)
         print("\n1.-The market clearing price for each hour:")
         for (n, t), price in self.results.price.items():
             print(f"Hour {t}; Node {n}: {price} $/MWh")
@@ -217,7 +217,7 @@ class Step1_model:
         # print(self.results.profit_data)
 
         print("\n4.-Utility of each demand")
-        pd.set_option('display.max_columns', None)
+        
         print(self.results.utility)
         pd.reset_option('display.max_columns')
 
