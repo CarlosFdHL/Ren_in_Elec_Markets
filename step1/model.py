@@ -1,6 +1,7 @@
 import gurobipy as gp
 from gurobipy import GRB
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from input_data import InputData
 
@@ -180,8 +181,16 @@ class Step1_model:
         print(self.results.utility)
         pd.reset_option('display.max_columns')
 
+    def plotting_results(self):
+    # Plotting the results of the optimization problem
 
-        
+        for t, price in self.results.price.items():
+            plt.plot(t, price)
+            plt.xlabel("Hour")
+            plt.ylabel("Price $/MWh")
+            plt.title("Market clearing price for each hour")
+            plt.show()
+            
 
     def run(self):
         # Makes sure the model is solved and saves the results
