@@ -1,5 +1,6 @@
 from input_data import *
 from model import Step2_model
+from plotting import plotting_results
 
 
 
@@ -11,5 +12,7 @@ if __name__ == "__main__":
     model = Step2_model(input_data)
     model.run()
     model.print_results()
+
+    plotting_results(model)
 
     print("End of main.py")
