@@ -86,14 +86,42 @@ class Step3_model:
         }
 
 
+        self.constraints.demand_equal_production_global = {
+            t:  self.model.addConstr( - gp.quicksum(self.variables.production[g, t] for g in self.data.generators), 
+                                    GRB.EQUAL, 
+                                     - gp.quicksum(self.variables.demand[d, t] for d in self.data.loads), 
+                                    name=f"SystemDemandEqualProductionHour_{t}")
+            for t in self.data.timeSpan
+        } 
+
         self.constraints.demand_equal_production = {
             (n, t): self.model.addConstr(
-                gp.quicksum(self.variables.demand[d, t] for d in self.data.loads) +
-                gp.quicksum(self.data.bus_reactance[n, m] * (self.variables.angle[n] - self.variables.angle[m])
-                            for (n, m) in self.data.bus_capacity.keys() if n == n) -
-                gp.quicksum(self.variables.production[g, t] for g in self.data.generators),
+                -self.variables.demand[d, t] +
+                -gp.quicksum(self.data.bus_reactance[n_, m] * (self.variables.angle[n_] - self.variables.angle[m])
+                            for (n_, m) in self.data.bus_capacity.keys() if n_ == n) +  
+                gp.quicksum(self.variables.production[g, t] for g in self.data.generators if self.data.P_node[g] == n),
                 GRB.EQUAL, 0, name=f"BusBalance_{n}_{t}")
-            for n in self.data.nodes
+            for (d, n) in self.data.demand_per_load.keys()
+            for t in self.data.timeSpan
+        }
+
+        self.constraints.max_bus_power = {
+            (n, m, t): self.model.addConstr(
+                1/ self.data.bus_reactance[n, m] * (self.variables.angle[n] - self.variables.angle[m]),
+                GRB.LESS_EQUAL, self.data.bus_capacity[n, m],
+                name=f"MaxBusPower_{n}_{m}_{t}"
+            )
+            for (n, m) in self.data.bus_reactance.keys()
+            for t in self.data.timeSpan
+        }
+
+        self.constraints.min_bus_power = {
+            (n, m, t): self.model.addConstr(
+                1/ self.data.bus_reactance[n, m] * (self.variables.angle[n] - self.variables.angle[m]),
+                GRB.GREATER_EQUAL, -self.data.bus_capacity[n, m],
+                name=f"MaxBusPower_{n}_{m}_{t}"
+            )
+            for (n, m) in self.data.bus_reactance.keys()
             for t in self.data.timeSpan
         }
 
@@ -120,7 +148,7 @@ class Step3_model:
         # Creates the model and calls the functions to build the variables, constraints, and objective function
 
         print("\nBuilding model")
-        self.model = gp.Model(name="Investment Optimization Model")
+        self.model = gp.Model(name="Optimization Model")
         self.model.setParam('OutputFlag', 1)
 
         print("\nBuilding variables")
@@ -179,24 +207,28 @@ class Step3_model:
             for t in self.data.timeSpan
         }
         self.results.objective = self.model.objVal
-        self.results.price = {
+        self.results.nodal_price = {
             (n, t): constraint.Pi for (n, t), constraint in self.constraints.demand_equal_production.items()
+        }
+        self.results.price = {
+            t: constraint.Pi for t, constraint in self.constraints.demand_equal_production_global.items()
         }
 
         self.results.production_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
         self.results.profit_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
         self.results.utility = pd.DataFrame(index=self.data.timeSpan, columns=self.data.loads)
-        
+
         self.results.sum_power = 0
         for (n, t), constraint in self.constraints.demand_equal_production.items():
             for g in self.data.generators:
                 self.results.production_data.at[t, g] = self.variables.production[g, t].X
                 self.results.sum_power += self.variables.production[g, t].X
-                self.results.profit_data.at[t, g] = self.results.price[n, t] * self.variables.production[g, t].X
+                self.results.profit_data.at[t, g] = self.results.price[t] * self.variables.production[g, t].X
             
         for t_index, t in enumerate(self.data.timeSpan):
             for key in self.data.loads: 
-                self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.price[n, t]) * self.variables.demand[key, t].X
+                for n in self.data.nodes:
+                    self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.price[t]) * self.variables.demand[key, t].X
 
         # Compute zonal prices
         self.compute_zonal_prices()
@@ -208,10 +240,13 @@ class Step3_model:
     def print_results(self):
         # Print the results of the optimization problem
         print("\nPrinting results")
-        
+        pd.set_option('display.max_columns', None)
         print("\n1.-The market clearing price for each hour:")
-        for (n, t), price in self.results.price.items():
-            print(f"Hour {t}; Node : {price} $/MWh")
+        for t, price in self.results.price.items():
+            print(f"Hour {t}: {round(price, 3)} $/MWh")
+        print("\nNodal prices")
+        for (n, t), price in self.results.nodal_price.items():
+            print(f"Hour {t}; Node {n}: {round(price, 3)} $/MWh")
 
         print(f"\n2.-Social welfare of the system: {self.results.objective}")
 
@@ -223,7 +258,7 @@ class Step3_model:
         print(self.results.profit_data)
 
         print("\n4.-Utility of each demand")
-        pd.set_option('display.max_columns', None)
+        
         print(self.results.utility)
         pd.reset_option('display.max_columns')
 
