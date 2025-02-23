@@ -98,7 +98,7 @@ class Step2_model:
         }
 
         self.constraints.demand_equal_production = {
-            t: self.model.addConstr( - (gp.quicksum(self.variables.production[g, t] for g in self.data.generators) - 
+            t: self.model.addConstr( - (gp.quicksum(self.variables.production[g, t] for g in self.data.generators) + 
                                     (self.variables.battery_charging_power[t] * self.data.battery_change_efficiency) -  
                                     self.variables.battery_discharging_power[t] * self.data.battery_discharge_efficiency),
                                     GRB.EQUAL, 
@@ -133,6 +133,8 @@ class Step2_model:
             )
             for t in self.data.timeSpan if t > 1
         }
+        
+        #self.model.addConstr(self.variables.stored_energy[1], GRB.EQUAL, 0, name=f"StoredEnergy_1")
         
         
     def build_objective_function(self):
@@ -222,7 +224,10 @@ class Step2_model:
         print(self.results.utility)
         pd.reset_option('display.max_columns')
 
-
+        print("\n5.-Energy stored in the battery")
+        _, stored_energy = zip(*self.variables.stored_energy.items())
+        stored_energy = [float(value.X) for value in stored_energy]
+        print(stored_energy)
         
 
     def run(self):
