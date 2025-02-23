@@ -133,6 +133,8 @@ class Step2_model:
             )
             for t in self.data.timeSpan if t > 1
         }
+
+        #self.model.addConstr(self.variables.stored_energy[24], GRB.EQUAL, 0, name=f"StoredEnergy_24")
         
         #self.model.addConstr(self.variables.stored_energy[1], GRB.EQUAL, 0, name=f"StoredEnergy_1")
         

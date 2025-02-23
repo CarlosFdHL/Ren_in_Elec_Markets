@@ -170,6 +170,7 @@ class Step1_model:
         print(f"\n2.-Social welfare of the system: {self.results.objective}")
 
         print("\nProduction for each generator")
+        pd.set_option('display.max_columns', None)
         print(self.results.production_data)
         print("Sum of all generations: ",self.results.sum_power, "MW")
 
