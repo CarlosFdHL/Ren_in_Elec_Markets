@@ -18,6 +18,7 @@ class InputData:
         self.RU = {}
         self.RD = {}
         self.wind = {}
+        self.P_node = {}
         self.bid_offers = bid_offers
         self.demand = demand
         self.demand_bid_price = [] 
@@ -51,6 +52,7 @@ class InputData:
             self.RU[unit_id] = gen['RU (MW/h)']
             self.RD[unit_id] = gen['RD (MW/h)']
             self.wind[unit_id] = gen['wind']
+            self.P_node[unit_id] = gen['Node']
         
         sorted_keys = sorted(bid_offers, key=lambda k: bid_offers[k])
         sorted_power = []
@@ -120,7 +122,12 @@ system_demand = [
 ]
 
 demand_per_load = {
-    (1, 1): 3.8, (2, 2): 3.4, (3, 3): 6.3, (4, 4):2.6, (5, 5):2.5, (6, 6):4.8, (7, 7):4.4, (8, 8):6, (9, 9):6.1, (10, 10):6.8, (11, 13):9.3, (12, 14):6.8, (13, 15):11.1, (14, 16):3.5, (15, 18):11.7, (16, 19):6.4, (17, 20):4.5
+    (1, 1): 3.8, (2, 2): 3.4, (3, 3): 6.3, (4, 4):2.6, 
+    (5, 5):2.5, (6, 6):4.8, (7, 7):4.4, (8, 8):6, 
+    (9, 9):6.1, (10, 10):6.8, (11, 13):9.3, (12, 14):6.8, 
+    (13, 15):11.1, (14, 16):3.5, (15, 18):11.7, (16, 19):6.4, 
+    (17, 20):4.5, (18, 11): 0, (19, 12): 0, (20, 17): 0, 
+    (21, 21): 0, (22, 22): 0, (23, 23): 0, (24, 24): 0
 }
 
 #Tranmission lines Table 5 
