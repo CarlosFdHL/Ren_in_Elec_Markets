@@ -136,7 +136,7 @@ class Step2_model:
 
         #self.model.addConstr(self.variables.stored_energy[24], GRB.EQUAL, 0, name=f"StoredEnergy_24")
         
-        self.model.addConstr(self.variables.stored_energy[1], GRB.EQUAL, 0, name=f"StoredEnergy_1")
+        #self.model.addConstr(self.variables.stored_energy[1], GRB.EQUAL, 0, name=f"StoredEnergy_1")
         
         
     def build_objective_function(self):
