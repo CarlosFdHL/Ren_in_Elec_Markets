@@ -22,6 +22,8 @@ class Step3_model:
         self.constraints = Expando()
         self.results = Expando()
         self.build_model()
+    
+
 
     def build_variables(self):
         # Create the variables
@@ -85,7 +87,6 @@ class Step3_model:
             for (d, n) in self.data.demand_per_load.keys()
         }
 
-
         self.constraints.demand_equal_production_global = {
             t:  self.model.addConstr( - gp.quicksum(self.variables.production[g, t] for g in self.data.generators), 
                                     GRB.EQUAL, 
@@ -105,23 +106,14 @@ class Step3_model:
             for t in self.data.timeSpan
         }
 
-        self.constraints.max_bus_power = {
-            (n, m, t): self.model.addConstr(
-                1/ self.data.bus_reactance[n, m] * (self.variables.angle[n] - self.variables.angle[m]),
-                GRB.LESS_EQUAL, self.data.bus_capacity[n, m],
-                name=f"MaxBusPower_{n}_{m}_{t}"
-            )
-            for (n, m) in self.data.bus_reactance.keys()
-            for t in self.data.timeSpan
-        }
-
-        self.constraints.min_bus_power = {
-            (n, m, t): self.model.addConstr(
-                1/ self.data.bus_reactance[n, m] * (self.variables.angle[n] - self.variables.angle[m]),
-                GRB.GREATER_EQUAL, -self.data.bus_capacity[n, m],
-                name=f"MaxBusPower_{n}_{m}_{t}"
-            )
-            for (n, m) in self.data.bus_reactance.keys()
+        self.constraints.bus_balance = {
+            (n, t): self.model.addConstr(
+                gp.quicksum(self.variables.demand[d, t] for d in self.data.loads) +
+                gp.quicksum(self.data.bus_reactance[n, m] * (self.variables.angle[n] - self.variables.angle[m])
+                            for (n, m) in self.data.bus_capacity.keys() if n == n) -
+                gp.quicksum(self.variables.production[g, t] for g in self.data.generators),
+                GRB.EQUAL, 0, name=f"BusBalance_{n}_{t}")
+            for n in self.data.nodes
             for t in self.data.timeSpan
         }
 
@@ -148,7 +140,7 @@ class Step3_model:
         # Creates the model and calls the functions to build the variables, constraints, and objective function
 
         print("\nBuilding model")
-        self.model = gp.Model(name="Optimization Model")
+        self.model = gp.Model(name="Investment Optimization Model")
         self.model.setParam('OutputFlag', 1)
 
         print("\nBuilding variables")
@@ -167,20 +159,52 @@ class Step3_model:
 
 
     def compute_zonal_prices(self):
-       
-        # Compute zonal prices by averaging nodal prices within each zone
+        # Compute zonal prices, total generation, and total demand for each zone
         zone_prices = {}
+        zone_generation = {}
+        zone_demand = {}
+        zone_balance = {}
 
-        for zone in set(self.zone_mapping.values()): 
+        for zone in set(self.zone_mapping.values()):
+            # Identify nodes in the zone
             nodes_in_zone = [n for n, z in self.zone_mapping.items() if z == zone]
-            nodal_prices = [self.results.price[n] for n in nodes_in_zone if n in self.results.price]
+            
+            # Compute total demand in the zone across all time periods
+            demand_in_zone = sum(
+                self.variables.demand[d, t].X for d in self.data.loads for t in self.data.timeSpan if d in nodes_in_zone
+            )
+            
+            # Compute total generation in the zone across all time periods
+            generation_in_zone = sum(
+                self.variables.production[g, t].X for g in self.data.generators for t in self.data.timeSpan if g in nodes_in_zone
+            )
 
-            # Compute the average price for the zone
-            zone_prices[zone] = sum(nodal_prices) / len(nodal_prices) if nodal_prices else 0
+            # Compute net inter-zonal flow
+            inter_zonal_flow = sum(
+                self.results.atc[(zone, other_zone)]
+                for other_zone in set(self.zone_mapping.values()) if (zone, other_zone) in self.results.atc
+            )
 
+            # Define balance equation constraint
+            zone_balance[zone] = demand_in_zone + inter_zonal_flow - generation_in_zone
+
+            # Compute zonal price λ_a^{Zonal} from balance constraints
+            if zone_balance[zone] != 0:
+                zone_prices[zone] = abs(self.results.objective / zone_balance[zone])
+            else:
+                zone_prices[zone] = 0  # If no demand or generation, price is zero
+
+            # Store generation and demand per zone
+            zone_generation[zone] = generation_in_zone
+            zone_demand[zone] = demand_in_zone
+
+        # Save results
         self.results.zonal_price = zone_prices
+        self.results.zone_generation = zone_generation
+        self.results.zone_demand = zone_demand
+        self.results.zone_balance = zone_balance
 
-
+    
     def compute_atc(self):
         atc = {}
             
@@ -193,8 +217,7 @@ class Step3_model:
                 atc_key = (zone_from, zone_to)
                 atc[atc_key] = atc.get(atc_key, 0) + capacity
 
-        self.results.atc = atc
-
+        self.results.atc = atc 
 
 
     def save_results(self):
@@ -217,9 +240,9 @@ class Step3_model:
         self.results.production_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
         self.results.profit_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
         self.results.utility = pd.DataFrame(index=self.data.timeSpan, columns=self.data.loads)
-
+        
         self.results.sum_power = 0
-        for (n, t), constraint in self.constraints.demand_equal_production.items():
+        for t, constraint in self.constraints.demand_equal_production.items():
             for g in self.data.generators:
                 self.results.production_data.at[t, g] = self.variables.production[g, t].X
                 self.results.sum_power += self.variables.production[g, t].X
@@ -227,26 +250,33 @@ class Step3_model:
             
         for t_index, t in enumerate(self.data.timeSpan):
             for key in self.data.loads: 
-                for n in self.data.nodes:
-                    self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.price[t]) * self.variables.demand[key, t].X
+                self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.price[t]) * self.variables.demand[key, t].X
 
         # Compute zonal prices
         self.compute_zonal_prices()
 
         # Compute Available Transfer Capacities (ATC)
         self.compute_atc()
+
+        # Save zonal generation and demand
+        self.results.zone_generation = {zone: sum(
+        self.variables.production[g, t].X for g in self.data.generators for t in self.data.timeSpan if self.zone_mapping[g] == zone)
+        for zone in set(self.zone_mapping.values())
+         }
+
+        self.results.zone_demand = {zone: sum(
+        self.variables.demand[d, t].X for d in self.data.loads for t in self.data.timeSpan if self.zone_mapping[d] == zone)
+        for zone in set(self.zone_mapping.values())
+        }
     
 
     def print_results(self):
         # Print the results of the optimization problem
         print("\nPrinting results")
-        pd.set_option('display.max_columns', None)
+        
         print("\n1.-The market clearing price for each hour:")
         for t, price in self.results.price.items():
-            print(f"Hour {t}: {round(price, 3)} $/MWh")
-        print("\nNodal prices")
-        for (n, t), price in self.results.nodal_price.items():
-            print(f"Hour {t}; Node {n}: {round(price, 3)} $/MWh")
+            print(f"Hour {t}: {price} $/MWh")
 
         print(f"\n2.-Social welfare of the system: {self.results.objective}")
 
@@ -256,9 +286,9 @@ class Step3_model:
 
         print("\n3.-Profit for each producer")
         print(self.results.profit_data)
-
+ 
         print("\n4.-Utility of each demand")
-        
+        pd.set_option('display.max_columns', None)
         print(self.results.utility)
         pd.reset_option('display.max_columns')
 
@@ -269,7 +299,19 @@ class Step3_model:
         print("\nAvailable Transfer Capacities (ATC) Between Zones:")
         for (zone_from, zone_to), capacity in self.results.atc.items():
             print(f"{zone_from} → {zone_to}: {capacity} MVA")
-            
+        
+        print("\nZonal Generation (MW):")
+        for zone, gen in self.results.zone_generation.items():
+            print(f"{zone}: {gen:.2f} MW")
+
+        print("\nZonal Demand (MW):")
+        for zone, dem in self.results.zone_demand.items():
+            print(f"{zone}: {dem:.2f} MW")
+
+        print("\nZonal Balance (MW):")
+        for zone, bal in self.results.zone_balance.items():
+            print(f"{zone}: {bal:.2f} MW")
+
 
     def run(self):
         # Makes sure the model is solved and saves the results
