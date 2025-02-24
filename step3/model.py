@@ -99,10 +99,10 @@ class Step1_model:
 
         self.constraints.demand_equal_production = {
             (n, t): self.model.addConstr(
-                self.variables.demand[d, t] +
+                - (self.variables.demand[d, t] +
                 gp.quicksum((1/self.data.bus_reactance[n_, m]) * (self.variables.angle[n_] - self.variables.angle[m])
                             for (n_, m) in self.data.bus_capacity.keys() if n_ == n) -
-                gp.quicksum(self.variables.production[g, t] for g in self.data.generators if self.data.P_node[g] == n),
+                gp.quicksum(self.variables.production[g, t] for g in self.data.generators if self.data.P_node[g] == n)),
                 GRB.EQUAL, 0, name=f"BusBalance_{n}_{t}")
             for (d, n) in self.data.demand_per_load.keys()
             for t in self.data.timeSpan
