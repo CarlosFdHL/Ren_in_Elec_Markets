@@ -9,6 +9,7 @@ class InputData:
         self.timeSpan = [i for i in range(1,2)]
         self.loads = [i for i in range(1,len(demand_per_load)+1)]
         self.nodes = [i for i in range(1,25)]
+        self.zones = [i for i in range(1,4)] #3 zones
         self.Pmax = {}
         self.Pmin = {}
         self.Max_up_reserve = {}

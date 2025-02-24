@@ -87,14 +87,6 @@ class Step3_model:
             for (d, n) in self.data.demand_per_load.keys()
         }
 
-        self.constraints.demand_equal_production_global = {
-            t:  self.model.addConstr( - gp.quicksum(self.variables.production[g, t] for g in self.data.generators), 
-                                    GRB.EQUAL, 
-                                     - gp.quicksum(self.variables.demand[d, t] for d in self.data.loads), 
-                                    name=f"SystemDemandEqualProductionHour_{t}")
-            for t in self.data.timeSpan
-        } 
-
         self.constraints.demand_equal_production = {
             (n, t): self.model.addConstr(
                 -self.variables.demand[d, t] +
@@ -233,30 +225,27 @@ class Step3_model:
         self.results.nodal_price = {
             (n, t): constraint.Pi for (n, t), constraint in self.constraints.demand_equal_production.items()
         }
-        self.results.price = {
-            t: constraint.Pi for t, constraint in self.constraints.demand_equal_production_global.items()
-        }
 
         self.results.production_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
         self.results.profit_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
         self.results.utility = pd.DataFrame(index=self.data.timeSpan, columns=self.data.loads)
         
         self.results.sum_power = 0
-        for t, constraint in self.constraints.demand_equal_production.items():
+        for (n, t), constraint in self.constraints.demand_equal_production.items():
             for g in self.data.generators:
                 self.results.production_data.at[t, g] = self.variables.production[g, t].X
                 self.results.sum_power += self.variables.production[g, t].X
-                self.results.profit_data.at[t, g] = self.results.price[t] * self.variables.production[g, t].X
+                # self.results.profit_data.at[t, g] = self.results.price[t] * self.variables.production[g, t].X
             
-        for t_index, t in enumerate(self.data.timeSpan):
-            for key in self.data.loads: 
-                self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.price[t]) * self.variables.demand[key, t].X
-
-        # Compute zonal prices
-        self.compute_zonal_prices()
+        #for t_index, t in enumerate(self.data.timeSpan):
+            #for key in self.data.loads: 
+                #self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.price[t]) * self.variables.demand[key, t].X
 
         # Compute Available Transfer Capacities (ATC)
         self.compute_atc()
+
+        # Compute zonal prices
+        self.compute_zonal_prices()
 
         # Save zonal generation and demand
         self.results.zone_generation = {zone: sum(
@@ -275,8 +264,8 @@ class Step3_model:
         print("\nPrinting results")
         
         print("\n1.-The market clearing price for each hour:")
-        for t, price in self.results.price.items():
-            print(f"Hour {t}: {price} $/MWh")
+        # for t, price in self.results.price.items():
+        #     print(f"Hour {t}: {price} $/MWh")
 
         print(f"\n2.-Social welfare of the system: {self.results.objective}")
 

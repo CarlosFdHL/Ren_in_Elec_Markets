@@ -89,14 +89,6 @@ class Step1_model:
             for (d, n) in self.data.demand_per_load.keys()
         }
 
-        self.constraints.demand_equal_production_global = {
-            t:  self.model.addConstr( - gp.quicksum(self.variables.production[g, t] for g in self.data.generators), 
-                                    GRB.EQUAL, 
-                                     - gp.quicksum(self.variables.demand[d, t] for d in self.data.loads), 
-                                    name=f"SystemDemandEqualProductionHour_{t}")
-            for t in self.data.timeSpan
-        } 
-
         self.constraints.demand_equal_production = {
             (n, t): self.model.addConstr(
                 - (self.variables.demand[d, t] +
@@ -181,9 +173,6 @@ class Step1_model:
         self.results.nodal_price = {
             (n, t): constraint.Pi for (n, t), constraint in self.constraints.demand_equal_production.items()
         }
-        self.results.price = {
-            t: constraint.Pi for t, constraint in self.constraints.demand_equal_production_global.items()
-        }
 
         self.results.production_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
         self.results.profit_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
@@ -194,21 +183,19 @@ class Step1_model:
             for g in self.data.generators:
                 self.results.production_data.at[t, g] = self.variables.production[g, t].X
                 self.results.sum_power += self.variables.production[g, t].X
-                self.results.profit_data.at[t, g] = self.results.price[t] * self.variables.production[g, t].X
+                self.results.profit_data.at[t, g] = self.results.nodal_price[n, t] * self.variables.production[g, t].X
             
         for t_index, t in enumerate(self.data.timeSpan):
             for key in self.data.loads: 
                 for n in self.data.nodes:
-                    self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.price[t]) * self.variables.demand[key, t].X
+                    self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.nodal_price[n, t]) * self.variables.demand[key, t].X
 
     def print_results(self):
         # Print the results of the optimization problem
         print("\nPrinting results")
         pd.set_option('display.max_columns', None)
-        print("\n1.-The market clearing price for each hour:")
-        for t, price in self.results.price.items():
-            print(f"Hour {t}: {round(price, 3)} $/MWh")
-        print("\nNodal prices")
+
+        print("\n1.- Nodal prices")
         for (n, t), price in self.results.nodal_price.items():
             print(f"Hour {t}; Node {n}: {round(price, 3)} $/MWh")
 
