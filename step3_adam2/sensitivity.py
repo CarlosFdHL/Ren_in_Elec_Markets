@@ -87,9 +87,9 @@ def plot_nodal_prices(results_original, results_increased, results_decreased):
         # add_labels(rects3)
         
         plt.tight_layout()
-        plt.savefig(f'nodal_prices_hour_{display_hour}.png')
+       # plt.savefig(f'nodal_prices_hour_{display_hour}.png')
         plt.show()
-        
+'''   
     # Create a summary plot with average prices across all hours
     avg_original = []
     avg_increased = []
@@ -124,6 +124,6 @@ def plot_nodal_prices(results_original, results_increased, results_decreased):
     
     plt.tight_layout()
     plt.show()
-
+'''
 if __name__ == "__main__":
     sensitivity_analysis()
