@@ -10,8 +10,8 @@ class Expando(object):
     '''
     pass
 
-class Step3_model:
-    # Step3_model is a class that represents the optimization model. It receives an instance of the InputData class to build the optimization model and solve it.
+class Step3_zonal:
+    # Step3_zonal1 is a class that represents the optimization model for zonal pricing. It receives an instance of the InputData class to build the optimization model and solve it.
 
     def __init__(self, input_data: InputData):
         # Initialize model attributes
@@ -39,18 +39,19 @@ class Step3_model:
             for d in self.data.loads
         }
 
-        self.variables.angle = {
-            (n) : self.model.addVar(lb = 0, ub = 360, name=f"Angle_{n}")
-            for n in self.data.nodes
+        self.variables.flow = {
+            (a,b,t) : self.model.addVar(lb =-self.data.atc , ub =self.data.atc[a,b], name=f"flow_{a}_{b}_{t}")
+            for (a,b) in self.data.atc.keys()
+            for t in self.data.timeSpan     
         }
         
     def build_constraints(self):
-        # Create the constraints
+        # Create the constraints for zonal limits 
+
         num_hours = len(self.data.timeSpan)
         num_days = num_hours // 24
         
         self.constraints.production_upper_limit = {}
-
         for g in self.data.generators:
             for t_index, t in enumerate(self.data.timeSpan):
                 if not self.data.wind[g]:
@@ -81,35 +82,35 @@ class Step3_model:
         self.constraints.demand_upper_limit = {
             (d, t): self.model.addConstr(self.variables.demand[d, t],
                                         GRB.LESS_EQUAL,
-                                        self.data.demand_per_load[d,n]/100 * self.data.demand[t-1],
+                                        self.data.demand_per_load[d,a]/100 * self.data.demand[t-1],
                                         name=f"DemandUpperLimit_{t}")
             for t in self.data.timeSpan
-            for (d, n) in self.data.demand_per_load.keys()
+            for (d, a) in self.data.demand_per_load.keys()
         }
 
         self.constraints.demand_equal_production = {
-            (n, t): self.model.addConstr(
+            (a, t): self.model.addConstr(
                 -self.variables.demand[d, t] +
-                -gp.quicksum(self.data.bus_reactance[n_, m] * (self.variables.angle[n_] - self.variables.angle[m])
-                            for (n_, m) in self.data.bus_capacity.keys() if n_ == n) +  
-                gp.quicksum(self.variables.production[g, t] for g in self.data.generators if self.data.P_node[g] == n),
-                GRB.EQUAL, 0, name=f"BusBalance_{n}_{t}")
-            for (d, n) in self.data.demand_per_load.keys()
+                -gp.quicksum(self.variables.flow[a, b, t] for b in self.data.zones[a] if (a, b) in self.data.atc) -
+                gp.quicksum(self.variables.flow[b, a, t] for b in self.data.zones[a] if (b, a) in self.data.atc) -
+                gp.quicksum(self.variables.production[g, t] for g in self.data.generators if self.data.zone_mapping[g] == a),
+                GRB.EQUAL, 0, name=f"ZonalBalance_{a}_{t}")
+            for (d,a) in self.data.demand_per_load.keys()
             for t in self.data.timeSpan
         }
 
-        self.constraints.bus_balance = {
-            (n, t): self.model.addConstr(
-                gp.quicksum(self.variables.demand[d, t] for d in self.data.loads) +
-                gp.quicksum(self.data.bus_reactance[n, m] * (self.variables.angle[n] - self.variables.angle[m])
-                            for (n, m) in self.data.bus_capacity.keys() if n == n) -
-                gp.quicksum(self.variables.production[g, t] for g in self.data.generators),
-                GRB.EQUAL, 0, name=f"BusBalance_{n}_{t}")
-            for n in self.data.nodes
+        self.constraints.zonal_balance = {
+            (a, t): self.model.addConstr(
+                gp.quicksum(self.variables.demand[d, t] for d in self.data.loads if self.data.zone_mapping[self.data.bus_node[d]] == a) +
+                gp.quicksum(self.variables.flow[a, b, t] for b in self.data.zones[a] if (a, b) in self.data.atc) -
+                gp.quicksum(self.variables.flow[b, a, t] for b in self.data.zones[a] if (b, a) in self.data.atc) -
+                gp.quicksum(self.variables.production[g, t] for g in self.data.generators if self.data.zone_mapping[g] == a),
+                GRB.EQUAL, 0, name=f"ZonalBalance_{a}_{t}")
+            for a in self.data.zones
             for t in self.data.timeSpan
         }
 
-        self.model.addConstr(self.variables.angle[1], GRB.EQUAL, 0, name=f"Angle1")
+        self.model.addConstr(self.variables.flow[1], GRB.EQUAL, 0, name=f"Flow1")
 
         
     def build_objective_function(self):
@@ -149,69 +150,6 @@ class Step3_model:
         print(f"Number of constraints: {self.model.NumConstrs}")
 
 
-
-    def compute_zonal_prices(self):
-        # Compute zonal prices, total generation, and total demand for each zone
-        zone_prices = {}
-        zone_generation = {}
-        zone_demand = {}
-        zone_balance = {}
-
-        for zone in set(self.zone_mapping.values()):
-            # Identify nodes in the zone
-            nodes_in_zone = [n for n, z in self.zone_mapping.items() if z == zone]
-            
-            # Compute total demand in the zone across all time periods
-            demand_in_zone = sum(
-                self.variables.demand[d, t].X for d in self.data.loads for t in self.data.timeSpan if d in nodes_in_zone
-            )
-            
-            # Compute total generation in the zone across all time periods
-            generation_in_zone = sum(
-                self.variables.production[g, t].X for g in self.data.generators for t in self.data.timeSpan if g in nodes_in_zone
-            )
-
-            # Compute net inter-zonal flow
-            inter_zonal_flow = sum(
-                self.results.atc[(zone, other_zone)]
-                for other_zone in set(self.zone_mapping.values()) if (zone, other_zone) in self.results.atc
-            )
-
-            # Define balance equation constraint
-            zone_balance[zone] = demand_in_zone + inter_zonal_flow - generation_in_zone
-
-            # Compute zonal price λ_a^{Zonal} from balance constraints
-            if zone_balance[zone] != 0:
-                zone_prices[zone] = abs(self.results.objective / zone_balance[zone])
-            else:
-                zone_prices[zone] = 0  # If no demand or generation, price is zero
-
-            # Store generation and demand per zone
-            zone_generation[zone] = generation_in_zone
-            zone_demand[zone] = demand_in_zone
-
-        # Save results
-        self.results.zonal_price = zone_prices
-        self.results.zone_generation = zone_generation
-        self.results.zone_demand = zone_demand
-        self.results.zone_balance = zone_balance
-
-    
-    def compute_atc(self):
-        atc = {}
-            
-        # Sum up capacities of all lines connecting nodes from different zones
-        for (from_node, to_node), capacity in self.data.bus_capacity.items():
-            zone_from = self.zone_mapping[from_node]
-            zone_to = self.zone_mapping[to_node]
-
-            if zone_from != zone_to:
-                atc_key = (zone_from, zone_to)
-                atc[atc_key] = atc.get(atc_key, 0) + capacity
-
-        self.results.atc = atc 
-
-
     def save_results(self):
         # Save the results in the results attribute
 
@@ -222,8 +160,8 @@ class Step3_model:
             for t in self.data.timeSpan
         }
         self.results.objective = self.model.objVal
-        self.results.nodal_price = {
-            (n, t): constraint.Pi for (n, t), constraint in self.constraints.demand_equal_production.items()
+        self.results.zonal_price = {
+            (a, t): constraint.Pi for (a, t), constraint in self.constraints.demand_equal_production.items()
         }
 
         self.results.production_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
@@ -231,41 +169,26 @@ class Step3_model:
         self.results.utility = pd.DataFrame(index=self.data.timeSpan, columns=self.data.loads)
         
         self.results.sum_power = 0
-        for (n, t), constraint in self.constraints.demand_equal_production.items():
+        for (a, t), constraint in self.constraints.demand_equal_production.items():
             for g in self.data.generators:
                 self.results.production_data.at[t, g] = self.variables.production[g, t].X
                 self.results.sum_power += self.variables.production[g, t].X
-                # self.results.profit_data.at[t, g] = self.results.price[t] * self.variables.production[g, t].X
+                self.results.profit_data.at[t, g] = self.results.zonal_price[t] * self.variables.production[g, t].X
             
-        #for t_index, t in enumerate(self.data.timeSpan):
-            #for key in self.data.loads: 
-                #self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.price[t]) * self.variables.demand[key, t].X
+        for t_index, t in enumerate(self.data.timeSpan):
+            for key in self.data.loads: 
+                self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.zonal_price[t]) * self.variables.demand[key, t].X
 
-        # Compute Available Transfer Capacities (ATC)
-        self.compute_atc()
-
-        # Compute zonal prices
-        self.compute_zonal_prices()
-
-        # Save zonal generation and demand
-        self.results.zone_generation = {zone: sum(
-        self.variables.production[g, t].X for g in self.data.generators for t in self.data.timeSpan if self.zone_mapping[g] == zone)
-        for zone in set(self.zone_mapping.values())
-         }
-
-        self.results.zone_demand = {zone: sum(
-        self.variables.demand[d, t].X for d in self.data.loads for t in self.data.timeSpan if self.zone_mapping[d] == zone)
-        for zone in set(self.zone_mapping.values())
-        }
-    
+        
 
     def print_results(self):
         # Print the results of the optimization problem
         print("\nPrinting results")
-        
-        print("\n1.-The market clearing price for each hour:")
-        # for t, price in self.results.price.items():
-        #     print(f"Hour {t}: {price} $/MWh")
+        pd.set_option('display.max_columns', None)
+
+        print("\n1.- Zonal prices")
+        for (a, t), price in self.results.zonal_price.items():
+            print(f"Hour {t}; Zone {a}: {round(price, 3)} $/MWh")
 
         print(f"\n2.-Social welfare of the system: {self.results.objective}")
 
@@ -275,31 +198,11 @@ class Step3_model:
 
         print("\n3.-Profit for each producer")
         print(self.results.profit_data)
- 
+
         print("\n4.-Utility of each demand")
-        pd.set_option('display.max_columns', None)
+        
         print(self.results.utility)
         pd.reset_option('display.max_columns')
-
-        print("\nZonal Market Prices:")
-        for zone, price in self.results.zonal_price.items():
-            print(f"{zone}: {price:.2f} $/MWh")
-
-        print("\nAvailable Transfer Capacities (ATC) Between Zones:")
-        for (zone_from, zone_to), capacity in self.results.atc.items():
-            print(f"{zone_from} → {zone_to}: {capacity} MVA")
-        
-        print("\nZonal Generation (MW):")
-        for zone, gen in self.results.zone_generation.items():
-            print(f"{zone}: {gen:.2f} MW")
-
-        print("\nZonal Demand (MW):")
-        for zone, dem in self.results.zone_demand.items():
-            print(f"{zone}: {dem:.2f} MW")
-
-        print("\nZonal Balance (MW):")
-        for zone, bal in self.results.zone_balance.items():
-            print(f"{zone}: {bal:.2f} MW")
 
 
     def run(self):

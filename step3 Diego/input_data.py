@@ -3,13 +3,13 @@ import numpy as np
 
 # The class is used to instantiate an object that is passed to the model class to build the optimization model.
 class InputData:
-    def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict, bus_reactance: dict, bus_capacity: dict,zone_mapping: dict):   
+    def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict, bus_reactance: dict, bus_capacity: dict,zone_mapping: dict,):   
         # Initialize dictionaries to store the technical data for each generator
         self.generators = [i for i in range(1,len(generators)+1)]
         self.timeSpan = [i for i in range(1,2)]
         self.loads = [i for i in range(1,len(demand_per_load)+1)]
         self.nodes = [i for i in range(1,25)]
-        self.zones = [i for i in range(1,4)] #3 zones
+        self.zones = [i for i in range(1,3)] #2 zones
         self.Pmax = {}
         self.Pmin = {}
         self.Max_up_reserve = {}
@@ -27,7 +27,7 @@ class InputData:
         self.bus_reactance = bus_reactance  # Store bus_reactance
         self.bus_capacity = bus_capacity  # Store bus_capacity
         self.zone_mapping = zone_mapping  # Store zone_mapping
-        
+        self.atc = []
 
 
         #Adjust demand
@@ -155,14 +155,15 @@ bus_capacity = {
 }
 
 # Zonal Framework 
-# Assign nodes to zones
+# Assign zones to nodes
+# Zone A: 1-12, Zone B: 13-24
 zone_mapping = {
     1: "Zone A", 2: "Zone A", 3: "Zone A", 4: "Zone A",
     5: "Zone A", 6: "Zone A", 7: "Zone A", 8: "Zone A",
-    9: "Zone B", 10: "Zone B", 11: "Zone B", 12: "Zone B",
+    9: "Zone A", 10: "Zone A", 11: "Zone A", 12: "Zone A",
     13: "Zone B", 14: "Zone B", 15: "Zone B", 16: "Zone B",
-    17: "Zone C", 18: "Zone C", 19: "Zone C", 20: "Zone C", 
-    21: "Zone C", 22: "Zone C", 23: "Zone C", 24: "Zone C"
+    17: "Zone B", 18: "Zone B", 19: "Zone B", 20: "Zone B", 
+    21: "Zone B", 22: "Zone B", 23: "Zone B", 24: "Zone B"
 }
 
 
@@ -171,7 +172,7 @@ zone_mapping = {
 if __name__ == "__main__":
     # Use in case you want to access the data directly
 
-    input_data = InputData(generators, bid_offers, system_demand, demand_per_load, bus_reactance, bus_capacity,zone_mapping)
+    input_data = InputData(generators, bid_offers, system_demand, demand_per_load, bus_reactance, bus_capacity,zone_mapping, atc = {})
 
     # Accessing data for a specific unit
     print("Generators: ", input_data.generators)
