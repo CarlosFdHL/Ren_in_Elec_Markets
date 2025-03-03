@@ -66,8 +66,7 @@ def plot_generation_and_bid(input_data, hour=0):
     plt.step(cumulative_load_mw_bid, bid_prices_desc, label='Demand Bid Curve', color='orange')
     
     # Mark the equilibrium point (from the generation side)
-    plt.plot(equilibrium_gen, equilibrium_price, 'ro', markersize=4, 
-             label='Equilibrium Point')
+    #plt.plot(equilibrium_gen, equilibrium_price, 'ro', markersize=1, label='Equilibrium Point') 'commented out to show better final price'
     
     plt.xlabel('Cumulative Generation / Demand (MW)')
     plt.ylabel('Price')
