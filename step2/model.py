@@ -99,7 +99,7 @@ class Step2_model:
 
         self.constraints.demand_equal_production = {
             t: self.model.addConstr( - (gp.quicksum(self.variables.production[g, t] for g in self.data.generators) - 
-                                    ((self.variables.battery_charging_power[t] * self.data.battery_change_efficiency) -  
+                                    ((self.variables.battery_charging_power[t] * self.data.battery_charge_efficiency) -  
                                     self.variables.battery_discharging_power[t] / self.data.battery_discharge_efficiency)),
                                     GRB.EQUAL, 
                                     - (gp.quicksum(self.variables.demand[d, t] for d in self.data.loads)), 
@@ -128,7 +128,7 @@ class Step2_model:
         self.constraints.battery_energy_balance = {
             t: self.model.addConstr(self.variables.stored_energy[t],
                                     GRB.EQUAL,
-                                    self.variables.stored_energy[t-1] + self.variables.battery_charging_power[t] * self.data.battery_change_efficiency
+                                    self.variables.stored_energy[t-1] + self.variables.battery_charging_power[t] * self.data.battery_charge_efficiency
                                     - self.variables.battery_discharging_power[t] /self.data.battery_discharge_efficiency
             )
             for t in self.data.timeSpan if t > 1
