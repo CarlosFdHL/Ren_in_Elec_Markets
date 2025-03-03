@@ -1,6 +1,7 @@
 from input_data import *
 from model import Step1_model
 from plotting import plotting_results
+from plotting import plot_generation_and_bid as plotting_bid
 
 
 
@@ -15,4 +16,6 @@ if __name__ == "__main__":
 
     plotting_results(model)
     
+    plotting_bid(input_data)
+
     print("End of main.py")
