@@ -75,10 +75,9 @@ wind_farm_capacity = 200
 wind_CF = pd.read_csv('../data/wind_capacity_factors.csv')['wind_cf'].tolist()
 wind_CF = [cf * wind_farm_capacity for cf in wind_CF]
 
-
-# Generator data
+# Load generator data
 dtype_dict = {
-    'Pmax (MW)': object, 'Pmin (MW)': float, 'R+ (MW)': float, 'R- (MW)': float,
+    'Node': int,'Pmax (MW)': object, 'Pmin (MW)': float, 'R+ (MW)': float, 'R- (MW)': float,
     'RU (MW/h)': float, 'RD (MW/h)': float, 'UT (h)': int, 'DT (h)': int
 }
 generators = pd.read_csv('../data/GeneratorData.csv', dtype=dtype_dict)
@@ -95,15 +94,13 @@ generators = generators.to_dict(orient='records') # Convert to list of dictionar
 bid_offers = pd.read_csv('../data/bid_offers.csv')
 bid_offers = pd.Series(bid_offers.Price.values, index=bid_offers.Unit).to_dict()
 
-
-
 # Load System demand values in MW for each hour
 system_demand = pd.read_csv('../data/system_demand.csv')
 system_demand = system_demand['Demand'].tolist()
 
 # Load demand per load
-loaded_df = pd.read_csv('../data/demand_per_load.csv')
-demand_per_load = pd.Series(loaded_df.Demand.values, index=loaded_df['Load ID']).to_dict()
+demand_per_load = pd.read_csv('../data/demand_per_load.csv')
+demand_per_load = {(int(row['Load'])): row['Demand'] for index, row in demand_per_load.iterrows()}
 
 
 if __name__ == "__main__":
