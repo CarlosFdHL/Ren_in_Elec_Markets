@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 # Description: This file contains the InputData class that is used to store the technical data for each generator and the system demand data.
 
 # The class is used to instantiate an object that is passed to the model class to build the optimization model.
@@ -69,51 +70,41 @@ class InputData:
             self.demand_bid_price.append(demand_bid_price)
         print("Demand bid price: ", self.demand_bid_price)
 
-# Example data as you might get from a database or input file
-wind_CF = [0.584,0.609,0.616,0.612,0.614,0.617,0.607,0.611,0.607,0.625,0.644,0.658,0.661,0.656,0.674,0.702,0.717,0.726,0.742,0.773,0.778,0.763,0.742,0.743] # Capacity factor pu (P.nominal = 200 MW)
-wind_CF = [cf * 200 for cf in wind_CF]
-generators = [
-    {'Unit #': 1, 'Pmax (MW)': 152, 'Pmin (MW)': 30.4, 'R+ (MW)': 40, 'R- (MW)': 40, 'RU (MW/h)': 120, 'RD (MW/h)': 120, 'UT (h)': 8, 'DT (h)': 4, 'wind': False},
-    {'Unit #': 2, 'Pmax (MW)': 152, 'Pmin (MW)': 30.4, 'R+ (MW)': 40, 'R- (MW)': 40, 'RU (MW/h)': 120, 'RD (MW/h)': 120, 'UT (h)': 8, 'DT (h)': 4, 'wind': False},
-    {'Unit #': 3, 'Pmax (MW)': 350, 'Pmin (MW)': 75, 'R+ (MW)': 70, 'R- (MW)': 70, 'RU (MW/h)': 350, 'RD (MW/h)': 350, 'UT (h)': 8, 'DT (h)': 8, 'wind': False},
-    {'Unit #': 4, 'Pmax (MW)': 591, 'Pmin (MW)': 206.85, 'R+ (MW)': 180, 'R- (MW)': 180, 'RU (MW/h)': 240, 'RD (MW/h)': 240, 'UT (h)': 12, 'DT (h)': 10, 'wind': False},
-    {'Unit #': 5, 'Pmax (MW)': 60, 'Pmin (MW)': 12, 'R+ (MW)': 60, 'R- (MW)': 60, 'RU (MW/h)': 60, 'RD (MW/h)': 60, 'UT (h)': 4, 'DT (h)': 2, 'wind': False},
-    {'Unit #': 6, 'Pmax (MW)': 155, 'Pmin (MW)': 54.25, 'R+ (MW)': 30, 'R- (MW)': 30, 'RU (MW/h)': 155, 'RD (MW/h)': 155, 'UT (h)': 8, 'DT (h)': 8, 'wind': False},
-    {'Unit #': 7, 'Pmax (MW)': 155, 'Pmin (MW)': 54.25, 'R+ (MW)': 30, 'R- (MW)': 30, 'RU (MW/h)': 155, 'RD (MW/h)': 155, 'UT (h)': 8, 'DT (h)': 8, 'wind': False},
-    {'Unit #': 8, 'Pmax (MW)': 400, 'Pmin (MW)': 100, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 280, 'RD (MW/h)': 280, 'UT (h)': 1, 'DT (h)': 1, 'wind': False},
-    {'Unit #': 9, 'Pmax (MW)': 400, 'Pmin (MW)': 100, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 280, 'RD (MW/h)': 280, 'UT (h)': 1, 'DT (h)': 1, 'wind': False},
-    {'Unit #': 10, 'Pmax (MW)': 300, 'Pmin (MW)': 300, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 300, 'RD (MW/h)': 300, 'UT (h)': 0, 'DT (h)': 0, 'wind': False},
-    {'Unit #': 11, 'Pmax (MW)': 310, 'Pmin (MW)': 108.5, 'R+ (MW)': 60, 'R- (MW)': 60, 'RU (MW/h)': 180, 'RD (MW/h)': 180, 'UT (h)': 8, 'DT (h)': 8, 'wind': False},
-    {'Unit #': 12, 'Pmax (MW)': 350, 'Pmin (MW)': 140, 'R+ (MW)': 40, 'R- (MW)': 40, 'RU (MW/h)': 240, 'RD (MW/h)': 240, 'UT (h)': 8, 'DT (h)': 8, 'wind': False},
-    #6 additional Wind farms
-    {'Unit #': 13, 'Pmax (MW)': wind_CF, 'Pmin (MW)': 0, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 100, 'RD (MW/h)': 100, 'UT (h)': 0, 'DT (h)': 0, 'wind': True},
-    {'Unit #': 14, 'Pmax (MW)': wind_CF, 'Pmin (MW)': 0, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 100, 'RD (MW/h)': 100, 'UT (h)': 0, 'DT (h)': 0, 'wind': True},
-    {'Unit #': 15, 'Pmax (MW)': wind_CF, 'Pmin (MW)': 0, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 100, 'RD (MW/h)': 100, 'UT (h)': 0, 'DT (h)': 0, 'wind': True},
-    {'Unit #': 16, 'Pmax (MW)': wind_CF, 'Pmin (MW)': 0, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 100, 'RD (MW/h)': 100, 'UT (h)': 0, 'DT (h)': 0, 'wind': True},
-    {'Unit #': 17, 'Pmax (MW)': wind_CF, 'Pmin (MW)': 0, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 100, 'RD (MW/h)': 100, 'UT (h)': 0, 'DT (h)': 0, 'wind': True},
-    {'Unit #': 18, 'Pmax (MW)': wind_CF, 'Pmin (MW)': 0, 'R+ (MW)': 0, 'R- (MW)': 0, 'RU (MW/h)': 100, 'RD (MW/h)': 100, 'UT (h)': 0, 'DT (h)': 0, 'wind': True}
-]
-for gen in generators:
-    if not gen['wind']:
-        gen['Pmin (MW)'] = 0
+# Wind farm data
+wind_farm_capacity = 200
+wind_CF = pd.read_csv('../data/wind_capacity_factors.csv')['wind_cf'].tolist()
+wind_CF = [cf * wind_farm_capacity for cf in wind_CF]
 
-bid_offers = {
-    1: 13.32, 2: 13.32, 3: 20.7, 4: 20.93, 5: 26.11, 6: 10.52, 7: 10.52, 8: 6.02, 9: 5.47, 10: 0, 11: 10.52, 12: 10.89, 
-    13: 0, 14: 0, 15: 0, 16: 0, 17: 0, 18: 0 # Wind farms
+
+# Generator data
+dtype_dict = {
+    'Pmax (MW)': object, 'Pmin (MW)': float, 'R+ (MW)': float, 'R- (MW)': float,
+    'RU (MW/h)': float, 'RD (MW/h)': float, 'UT (h)': int, 'DT (h)': int
 }
+generators = pd.read_csv('../data/GeneratorData.csv', dtype=dtype_dict)
 
-# System demand values in MW for each hour
-system_demand = [
-    1775.835, 1669.815, 1590.3, 1563.795, 1563.795, 
-    1590.3, 1961.37, 2279.43, 2517.975, 2544.48, 
-    2544.48, 2517.975, 2517.975, 2517.975, 2464.965, 
-    2464.965, 2623.995, 2650.5, 2650.5, 2544.48, 
-    2411.955, 2199.915, 1934.865, 1669.815
-]
+for index, row in generators.iterrows():
+    if row['wind']:
+        generators.at[index, 'Pmax (MW)'] = wind_CF.copy() # Assign the wind capacity factors
+    else:
+        generators.at[index, 'Pmax (MW)'] = float(row['Pmax (MW)']) # Convert to float
 
-demand_per_load = {
-    1: 3.8, 2: 3.4, 3: 6.3, 4:2.6, 5:2.5, 6:4.8, 7:4.4, 8:6, 9:6.1, 10:6.8, 11:9.3, 12:6.8, 13:11.1, 14:3.5, 15:11.7, 16:6.4, 17:4.5
-}
+generators = generators.to_dict(orient='records') # Convert to list of dictionaries
+
+# Load generator bid offers
+bid_offers = pd.read_csv('../data/bid_offers.csv')
+bid_offers = pd.Series(bid_offers.Price.values, index=bid_offers.Unit).to_dict()
+
+
+
+# Load System demand values in MW for each hour
+system_demand = pd.read_csv('../data/system_demand.csv')
+system_demand = system_demand['Demand'].tolist()
+
+# Load demand per load
+loaded_df = pd.read_csv('../data/demand_per_load.csv')
+demand_per_load = pd.Series(loaded_df.Demand.values, index=loaded_df['Load ID']).to_dict()
+
 
 if __name__ == "__main__":
     # Use in case you want to access the data directly
