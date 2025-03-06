@@ -47,13 +47,7 @@ class Step2_model:
             t: self.model.addVar(lb = 0, ub = self.data.max_battery_discharging_power, name=f"BatteryDischargingPower_{t}")
             for t in self.data.timeSpan
         }
-        """
-        self.variables.on = {
-            (g, t): self.model.addVar(vtype=GRB.BINARY, name=f"on_{g}_{t}")
-            for g in self.data.generators
-            for t in self.data.timeSpan
-        }
-          """          
+
     def build_constraints(self):
         # Create the constraints
         num_hours = len(self.data.timeSpan)
@@ -82,7 +76,7 @@ class Step2_model:
         self.constraints.production_lower_limit = {
             (g, t): self.model.addConstr(self.variables.production[g, t], 
                                          GRB.GREATER_EQUAL, 
-                                         self.data.Pmin[g] ,#*  self.variables.on[g, t], 
+                                         self.data.Pmin[g],
                                          name=f"ProductionMINLimit_{g}")
             for g in self.data.generators
             for t in self.data.timeSpan
@@ -94,7 +88,7 @@ class Step2_model:
                                         self.data.demand_per_load[d]/100 * self.data.demand[t-1],
                                         name=f"DemandUpperLimit_{t}")
             for t in self.data.timeSpan
-            for d in self.data.loads
+            for d in self.data.loads 
         }
 
         self.constraints.demand_equal_production = {
@@ -116,6 +110,14 @@ class Step2_model:
             for t in self.data.timeSpan if t > 1
         }
 
+        self.constraints.ramp_up_initial = {
+            g: self.model.addConstr(self.variables.production[g, 1] - self.data.p_initial[g],
+                                    GRB.LESS_EQUAL,
+                                    self.data.RU[g],
+                                    name=f"RampUpInitial_{g}")
+            for g in self.data.generators
+        }
+
         self.constraints.ramp_down = {
             (g, t): self.model.addConstr(self.variables.production[g, t-1] - self.variables.production[g, t],
                                          GRB.LESS_EQUAL,
@@ -123,6 +125,14 @@ class Step2_model:
                                         name=f"RampDown_{g}_{t}")
             for g in self.data.generators
             for t in self.data.timeSpan if t > 1
+        }
+
+        self.constraints.ramp_down_initial = {
+            g: self.model.addConstr(self.data.p_initial[g] - self.variables.production[g, 1],
+                                    GRB.LESS_EQUAL,
+                                    self.data.RD[g],
+                                    name=f"RampDownInitial_{g}")
+            for g in self.data.generators
         }
 
         self.constraints.battery_energy_balance = {
@@ -133,6 +143,13 @@ class Step2_model:
             )
             for t in self.data.timeSpan if t > 1
         }
+
+        self.constraints.battery_energy_initial = self.model.addConstr(self.variables.stored_energy[1], 
+                                                                       GRB.EQUAL, 
+                                                                       self.variables.battery_charging_power[1] * self.data.battery_charge_efficiency
+                                                                        - self.variables.battery_discharging_power[1] /self.data.battery_discharge_efficiency, 
+                                                                        name=f"StoredEnergy_1")
+
 
         #self.model.addConstr(self.variables.stored_energy[24], GRB.EQUAL, 0, name=f"StoredEnergy_24")
         

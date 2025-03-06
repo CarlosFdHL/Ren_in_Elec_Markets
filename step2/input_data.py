@@ -4,7 +4,7 @@ import pandas as pd
 
 # The class is used to instantiate an object that is passed to the model class to build the optimization model.
 class InputData:
-    def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict):  
+    def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict, p_initial: dict):  
         # Initialize dictionaries to store the technical data for each generator
         self.generators = [i for i in range(1,len(generators)+1)]
         self.timeSpan = [i for i in range(1,25)]
@@ -20,13 +20,14 @@ class InputData:
         self.wind = {}
         self.bid_offers = bid_offers
         self.demand = demand
+        self.p_initial = p_initial
         self.demand_bid_price = [] 
         self.demand_per_load = demand_per_load
-        self.max_battery_storage = 3000 # MWh
-        self.max_battery_charging_power = 300 # MW
-        self.max_battery_discharging_power = 300 # MW
-        self.battery_charge_efficiency = 0.75
-        self.battery_discharge_efficiency = 0.86
+        self.max_battery_storage = 100 # MWh
+        self.max_battery_charging_power = 100 # MW
+        self.max_battery_discharging_power = 100# MW
+        self.battery_charge_efficiency = 0.95#0.86#0.75
+        self.battery_discharge_efficiency = 0.95#0.96#0.86
 
         #Adjust demand
         num_hours = len(self.timeSpan)
@@ -73,6 +74,10 @@ class InputData:
             for i, (key, load) in enumerate(demand_per_load.items()):
                 demand_bid_price[key] = last_bid_demand * np.exp(exponential_increment * i)
             self.demand_bid_price.append(demand_bid_price)
+
+# Initial production data
+p_initial = pd.read_csv('../data/p_ini.csv')
+p_initial = pd.Series(p_initial.P_ini.values, index=p_initial.Unit).to_dict()
 
 # Wind farm data
 wind_farm_capacity = 200

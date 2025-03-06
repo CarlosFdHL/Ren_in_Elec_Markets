@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import os
 # Description: This file contains the InputData class that is used to store the technical data for each generator and the system demand data.
 
 # The class is used to instantiate an object that is passed to the model class to build the optimization model.
@@ -75,9 +76,18 @@ class InputData:
             self.demand_bid_price.append(demand_bid_price)
         print("Demand bid price: ", self.demand_bid_price)
 
+script_dir = os.path.dirname(__file__)
+wind_cf_path = os.path.join(script_dir, '../data/wind_capacity_factors.csv')
+generatorData_path = os.path.join(script_dir, '../data/GeneratorData.csv')
+bid_offers_path = os.path.join(script_dir, '../data/bid_offers.csv')
+system_demand_path = os.path.join(script_dir, '../data/system_demand.csv')
+demand_per_load_path = os.path.join(script_dir, '../data/demand_per_load.csv')
+bus_reactance_path = os.path.join(script_dir, '../data/bus_reactance.csv')
+bus_capacity_path = os.path.join(script_dir, '../data/bus_capacity.csv')
+
 # Wind farm data
 wind_farm_capacity = 200
-wind_CF = pd.read_csv('../data/wind_capacity_factors.csv')['wind_cf'].tolist()
+wind_CF = pd.read_csv(wind_cf_path)['wind_cf'].tolist()
 wind_CF = [cf * wind_farm_capacity for cf in wind_CF]
 
 # Load generator data
@@ -85,7 +95,7 @@ dtype_dict = {
     'Node': int, 'Pmax (MW)': object, 'Pmin (MW)': float, 'R+ (MW)': float, 'R- (MW)': float,
     'RU (MW/h)': float, 'RD (MW/h)': float, 'UT (h)': int, 'DT (h)': int
 }
-generators = pd.read_csv('../data/GeneratorData.csv', dtype=dtype_dict)
+generators = pd.read_csv(generatorData_path, dtype=dtype_dict)
 
 for index, row in generators.iterrows():
     if row['wind']:
@@ -96,23 +106,23 @@ for index, row in generators.iterrows():
 generators = generators.to_dict(orient='records') # Convert to list of dictionaries
 
 # Load generator bid offers
-bid_offers = pd.read_csv('../data/bid_offers.csv')
+bid_offers = pd.read_csv(bid_offers_path)
 bid_offers = pd.Series(bid_offers.Price.values, index=bid_offers.Unit).to_dict()
 
 # Load System demand values in MW for each hour
-system_demand = pd.read_csv('../data/system_demand.csv')
+system_demand = pd.read_csv(system_demand_path)
 system_demand = system_demand['Demand'].tolist()
 
 # Load demand per load
-demand_per_load = pd.read_csv('../data/demand_per_load.csv')
+demand_per_load = pd.read_csv(demand_per_load_path)
 demand_per_load = {(int(row['Load']), int(row['Node'])): row['Demand'] for index, row in demand_per_load.iterrows()}
 
 # Load bus reactance
-bus_reactance = pd.read_csv('../data/bus_reactance.csv')
+bus_reactance = pd.read_csv(bus_reactance_path)
 bus_reactance = {(row['From Bus'], row['To Bus']): row['Reactance'] for index, row in bus_reactance.iterrows()}
 
 # Load bus capacity
-bus_capacity = pd.read_csv('../data/bus_capacity.csv')
+bus_capacity = pd.read_csv(bus_capacity_path)
 bus_capacity = {(row['From Bus'], row['To Bus']): row['Capacity'] for index, row in bus_capacity.iterrows()}
 
 if __name__ == "__main__":
