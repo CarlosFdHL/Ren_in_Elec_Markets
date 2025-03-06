@@ -37,7 +37,8 @@ class Step1_model:
         }
 
         self.variables.angle = {
-            (n) : self.model.addVar(lb = 0, ub = 360, name=f"Angle_{n}")
+            (n, t) : self.model.addVar(lb = -180, ub = 180, name=f"Angle_{n}_{t}")
+            for t in self.data.timeSpan
             for n in self.data.nodes
         }
         
@@ -92,20 +93,39 @@ class Step1_model:
             for t in self.data.timeSpan
         } 
 
-        self.constraints.demand_equal_production = {
-            (n, t): self.model.addConstr(
-                -self.variables.demand[d, t] +
-                -gp.quicksum(self.data.bus_reactance[n_, m] * (self.variables.angle[n_] - self.variables.angle[m])
-                            for (n_, m) in self.data.bus_capacity.keys() if n_ == n) +  
-                gp.quicksum(self.variables.production[g, t] for g in self.data.generators if self.data.P_node[g] == n),
-                GRB.EQUAL, 0, name=f"BusBalance_{n}_{t}")
-            for (d, n) in self.data.demand_per_load.keys()
-            for t in self.data.timeSpan
-        }
+        # Defining Demand and Production Balance at Each Node for Each Time Period
+        self.constraints.demand_equal_production = {}
+        for t in self.data.timeSpan:
+            for n in self.data.nodes:
+                # Summing the production at node n
+                generation_at_node = gp.quicksum(self.variables.production[g, t] 
+                                                for g in self.data.generators 
+                                                if self.data.P_node[g] == n)
+
+                # Calculating net flow out of node n
+                net_flow = gp.quicksum((1/self.data.bus_reactance[n_, m]) * (self.variables.angle[n_, t] - self.variables.angle[m, t])
+                                    for (n_, m) in self.data.bus_capacity.keys() 
+                                    if n_ == n) - \
+                        gp.quicksum((1/self.data.bus_reactance[m, n_]) * (self.variables.angle[m, t] - self.variables.angle[n_, t])
+                                    for (m, n_) in self.data.bus_capacity.keys() 
+                                    if n_ == n)
+
+                # Demand at node n for time t, ensure loads are linked correctly
+                demand_at_node = gp.quicksum(self.variables.demand[d, t]
+                                            for (d, load_n) in self.data.demand_per_load.keys()
+                                            if load_n == n)
+
+                # Adding the balance constraint
+                self.constraints.demand_equal_production[n, t] = self.model.addConstr(
+                    -(generation_at_node + net_flow),
+                    GRB.EQUAL,
+                    -demand_at_node,
+                    name=f"BusBalance_n{n}_t{t}"
+                )
 
         self.constraints.max_bus_power = {
             (n, m, t): self.model.addConstr(
-                1/ self.data.bus_reactance[n, m] * (self.variables.angle[n] - self.variables.angle[m]),
+                1/ self.data.bus_reactance[n, m] * (self.variables.angle[n, t] - self.variables.angle[m, t]),
                 GRB.LESS_EQUAL, self.data.bus_capacity[n, m],
                 name=f"MaxBusPower_{n}_{m}_{t}"
             )
@@ -115,7 +135,7 @@ class Step1_model:
 
         self.constraints.min_bus_power = {
             (n, m, t): self.model.addConstr(
-                1/ self.data.bus_reactance[n, m] * (self.variables.angle[n] - self.variables.angle[m]),
+                1/ self.data.bus_reactance[n, m] * (self.variables.angle[n, t] - self.variables.angle[m, t]),
                 GRB.GREATER_EQUAL, -self.data.bus_capacity[n, m],
                 name=f"MaxBusPower_{n}_{m}_{t}"
             )
@@ -123,8 +143,8 @@ class Step1_model:
             for t in self.data.timeSpan
         }
 
-        self.model.addConstr(self.variables.angle[1], GRB.EQUAL, 0, name=f"Angle1")
-
+        for t in self.data.timeSpan:
+            self.model.addConstr(self.variables.angle[1, t], GRB.EQUAL, 0, name=f"Angle1_{t}")
         
     def build_objective_function(self):
         # Create the objective function

@@ -9,6 +9,8 @@ def run_model(input_data):
     model.run()
     model.print_results() 
 
+    return model.results.nodal_price
+
 
 if __name__ == "__main__":
     # Default input data
