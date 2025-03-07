@@ -15,14 +15,25 @@ def plotting_results(model):
     _, stored_energy = zip(*model.variables.stored_energy.items())
     fig, ax = plt.subplots()
     stored_energy = [float(value.X) for value in stored_energy]
-    ax.step(t, stored_energy)
+    ax.plot(t, stored_energy)
     ax.set_xlabel("Hour")
     ax.set_ylabel("Energy stored MWh")
     ax.set_title("Energy stored in battery for each hour")
     ax.set_xticks(range(1, 25))
     
-    
-    plt.show()
+
+    print(model.results.power_charging)
+    battery_charge = model.results.power_charging.values()
+    battery_discharge = model.results.power_discharging.values()
+    battery_discharge = [-value for value in battery_discharge]
+    fig, ax = plt.subplots()
+    ax.bar(t, battery_charge, label="Battery Charge")
+    ax.bar(t, battery_discharge, label="Battery Discharge")
+    ax.set_xlabel("Hour")
+    ax.set_ylabel("Power MW")
+    ax.set_title("Battery charge and discharge for each hour")
+    ax.legend()
+    ax.set_xticks(range(1, 25))
 
 def plot_generation_and_bid(input_data, hour=0):
 

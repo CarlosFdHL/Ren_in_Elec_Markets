@@ -99,7 +99,16 @@ class Step2_model:
                                     - (gp.quicksum(self.variables.demand[d, t] for d in self.data.loads)), 
                                     name=f"SystemDemandEqualProductionHour_{t}")
             for t in self.data.timeSpan
-        } 
+        }
+        # self.constraints.demand_equal_production = {
+        #     t: self.model.addConstr( - (gp.quicksum(self.variables.production[g, t] for g in self.data.generators) - 
+        #                             ((self.variables.battery_charging_power[t]) -  
+        #                             self.variables.battery_discharging_power[t])),
+        #                             GRB.EQUAL, 
+        #                             - (gp.quicksum(self.variables.demand[d, t] for d in self.data.loads)), 
+        #                             name=f"SystemDemandEqualProductionHour_{t}")
+        #     for t in self.data.timeSpan
+        # }
 
         self.constraints.ramp_up = {
             (g, t): self.model.addConstr(self.variables.production[g, t] - self.variables.production[g, t-1],
@@ -220,6 +229,15 @@ class Step2_model:
         for t_index, t in enumerate(self.data.timeSpan):
             for key, power_consumption in self.data.demand_per_load.items():   
                 self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.price[t]) * self.variables.demand[key, t].X
+            
+        self.results.power_charging = {
+            t: self.variables.battery_charging_power[t].X
+            for t in self.data.timeSpan
+        }
+        self.results.power_discharging = {
+            t: self.variables.battery_discharging_power[t].X
+            for t in self.data.timeSpan
+        }
 
     def print_results(self):
         # Print the results of the optimization problem
