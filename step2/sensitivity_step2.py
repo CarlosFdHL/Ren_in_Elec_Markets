@@ -31,19 +31,19 @@ import copy
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from input_data import InputData
+from input_data import InputData, generators, bid_offers, system_demand, demand_per_load, p_initial
+from model import Step2_model
 
-def run_sensitivity_analysis(input_data, battery_capacities, charging_rates, discharge_rates, charge_efficiencies, discharge_efficiencies):
+def run_battery_sensitivity(
+    base_input_data: InputData,
+    battery_capacities: list,
+    charging_rates: list,
+    discharge_rates: list,
+    charge_efficiencies: list,
+    discharge_efficiencies: list,
+):
     """
-    Run sensitivity analysis by manipulating battery parameters and running the model.
-
-    Parameters:
-    - input_data: Instance of InputData class containing the initial data.
-    - battery_capacities: List of battery capacities to test.
-    - charging_rates: List of maximum charging rates to test.
-    - discharge_rates: List of maximum discharging rates to test.
-    - charge_efficiencies: List of charging efficiencies to test.
-    - discharge_efficiencies: List of discharging efficiencies to test.
+    Run sensitivity analysis by modifying battery parameters in the InputData object.
     """
     results = []
 
@@ -52,53 +52,58 @@ def run_sensitivity_analysis(input_data, battery_capacities, charging_rates, dis
             for discharge_rate in discharge_rates:
                 for charge_eff in charge_efficiencies:
                     for discharge_eff in discharge_efficiencies:
-                        # Modify the battery parameters in the input data
-                        input_data.max_battery_storage = capacity
-                        input_data.max_battery_charging_power = charge_rate
-                        input_data.max_battery_discharging_power = discharge_rate
-                        input_data.battery_charge_efficiency = charge_eff
-                        input_data.battery_discharge_efficiency = discharge_eff
+                        # Create a DEEP COPY of the input data to avoid modifying the original
+                        modified_input = copy.deepcopy(base_input_data)
+                        
+                        # Update battery parameters
+                        modified_input.max_battery_storage = capacity
+                        modified_input.max_battery_charging_power = charge_rate
+                        modified_input.max_battery_discharging_power = discharge_rate
+                        modified_input.battery_charge_efficiency = charge_eff
+                        modified_input.battery_discharge_efficiency = discharge_eff
 
-                        # Initialize and run the model
-                        model = Step2_model(input_data)
+                        # Run the model with modified parameters
+                        model = Step2_model(modified_input)
                         model.run()
 
-                        # Save the results
+                        # Extract results
                         results.append({
-                            'Battery Capacity': capacity,
-                            'Charging Rate': charge_rate,
-                            'Discharging Rate': discharge_rate,
-                            'Charging Efficiency': charge_eff,
-                            'Discharging Efficiency': discharge_eff,
-                            'Objective Value': model.results.objective,
-                            'Market Clearing Prices': model.results.price,
-                            'Production Data': model.results.production_data,
-                            'Profit Data': model.results.profit_data,
-                            'Utility Data': model.results.utility,
-                            'Stored Energy': [v.X for v in model.variables.stored_energy.values()]
+                            "Battery Capacity (MWh)": capacity,
+                            "Charging Rate (MW)": charge_rate,
+                            "Discharging Rate (MW)": discharge_rate,
+                            "Charge Efficiency": charge_eff,
+                            "Discharge Efficiency": discharge_eff,
+                            "Objective Value ($)": model.results.objective,
+                            "Avg Market Price ($/MWh)": sum(model.results.price.values()) / len(model.results.price),
+                            "Total Production (MW)": model.results.sum_power,
                         })
 
-    # Convert results to a DataFrame for easier analysis
-    results_df = pd.DataFrame(results)
-    return results_df
+    return pd.DataFrame(results)
 
-# Example usage
+# Example usage in your main.py:
 if __name__ == "__main__":
-    from input_data import InputData  # Ensure you import the InputData class
+    # Initialize the base InputData object (as done in your main.py)
+    # Replace this with your actual InputData initialization
+    input_data = InputData(
+        generators= generators,  # From your data
+        bid_offers= bid_offers,
+        demand=system_demand,
+        demand_per_load=demand_per_load,
+        p_initial=p_initial,
+    )
 
-    # Initialize input data
-    input_data = InputData()  # Replace with actual initialization if needed
-
-    # Define ranges for sensitivity analysis
-    battery_capacities = [100, 200, 300]  # Example battery capacities (MWh)
-    charging_rates = [50, 100, 150]  # Example charging rates (MW)
-    discharge_rates = [50, 100, 150]  # Example discharging rates (MW)
-    charge_efficiencies = [0.8, 0.9, 1.0]  # Example charging efficiencies
-    discharge_efficiencies = [0.8, 0.9, 1.0]  # Example discharging efficiencies
+    # Define parameter ranges to test
+    battery_params = {
+        "battery_capacities": [100, 200, 300],  # MWh
+        "charging_rates": [50, 100, 150],  # MW
+        "discharge_rates": [50, 100, 150],  # MW
+        "charge_efficiencies": [0.8, 0.9, 0.95],
+        "discharge_efficiencies": [0.8, 0.9, 0.95],
+    }
 
     # Run sensitivity analysis
-    sensitivity_results = run_sensitivity_analysis(input_data, battery_capacities, charging_rates, discharge_rates, charge_efficiencies, discharge_efficiencies)
+    results_df = run_battery_sensitivity(input_data, **battery_params)
 
-    # Save or print the results
-    sensitivity_results.to_csv("sensitivity_analysis_results.csv", index=False)
-    print(sensitivity_results)
+    # Save results to CSV
+    results_df.to_csv("battery_sensitivity_results.csv", index=False)
+    print(results_df)
