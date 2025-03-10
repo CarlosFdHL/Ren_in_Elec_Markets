@@ -111,7 +111,7 @@ generators = generators.to_dict(orient='records') # Convert to list of dictionar
 
 # Load generator bid offers
 bid_offers = pd.read_csv(bid_offers_path)
-bid_offers = pd.Series(bid_offers.Price.values, index=bid_offers.Unit).to_dict()
+bid_offers = pd.Series(bid_offers.Bid.values, index=bid_offers.Unit).to_dict()
 
 # Load System demand values in MW for each hour
 system_demand = pd.read_csv(system_demand_path)
