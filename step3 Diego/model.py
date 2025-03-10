@@ -40,7 +40,7 @@ class Step3_zonal:
         }
 
         self.variables.flow = {
-            (a,b,t) : self.model.addVar(lb =-self.data.atc , ub =self.data.atc[a,b], name=f"flow_{a}_{b}_{t}")
+            (a,b,t) : self.model.addVar(lb =-self.data.atc[a, b] , ub =self.data.atc[a, b], name=f"flow_{a}_{b}_{t}")
             for (a,b) in self.data.atc.keys()
             for t in self.data.timeSpan     
         }
@@ -89,16 +89,25 @@ class Step3_zonal:
         }
 
         self.constraints.demand_equal_production = {
-            (a, t): self.model.addConstr(
-                -self.variables.demand[d, t] +
-                -gp.quicksum(self.variables.flow[a, b, t] for b in self.data.zones[a] if (a, b) in self.data.atc) -
-                gp.quicksum(self.variables.flow[b, a, t] for b in self.data.zones[a] if (b, a) in self.data.atc) -
-                gp.quicksum(self.variables.production[g, t] for g in self.data.generators if self.data.zone_mapping[g] == a),
+            (a, t): self.model  .addConstr(
+                gp.quicksum(self.variables.demand[d, t] for d in self.data.loads if self.data.zone_mapping[d] == a) 
+                -gp.quicksum(self.variables.flow[a, b, t] for b in self.data.zones[a] if (a, b) in self.data.atc) 
+                -gp.quicksum(self.variables.flow[b, a, t] for b in self.data.zones[a] if (b, a) in self.data.atc) 
+                -gp.quicksum(self.variables.production[g, t] for g in self.data.generators if self.data.zone_mapping[g] == a),
                 GRB.EQUAL, 0, name=f"ZonalBalance_{a}_{t}")
             for (d,a) in self.data.demand_per_load.keys()
             for t in self.data.timeSpan
         }
 
+        self.constraints.flow_limits = {
+            (a, b, t): self.model.addConstr(
+                self.variables.flow[a, b, t], GRB.LESS_EQUAL, self.data.atc[(a, b)],
+                name=f"FlowLimit_{a}_{b}_{t}")
+            for (a, b) in self.data.atc.keys()
+            for t in self.data.timeSpan
+        }
+        
+        '''
         self.constraints.zonal_balance = {
             (a, t): self.model.addConstr(
                 gp.quicksum(self.variables.demand[d, t] for d in self.data.loads if self.data.zone_mapping[self.data.bus_node[d]] == a) +
@@ -109,6 +118,27 @@ class Step3_zonal:
             for a in self.data.zones
             for t in self.data.timeSpan
         }
+        
+        self.constraints.max_bus_power = {
+            (a, b, t): self.model.addConstr(
+                (self.variables.flow[a, b, t] for b in self.data.zones[a] if (a, b) in self.data.atc),
+                GRB.LESS_EQUAL, self.data.bus_capacity[a, b],
+                name=f"MaxBusPower_{a}_{b}_{t}"
+            )
+            for (a, b) in self.data.bus_reactance.keys()
+            for t in self.data.timeSpan
+        }
+
+        self.constraints.min_bus_power = {
+            (a, b, t): self.model.addConstr(
+                (self.variables.flow[a, b, t]for b in self.data.zones[a] if (a, b) in self.data.atc), 
+                GRB.GREATER_EQUAL, -self.data.bus_capacity[a, b],
+                name=f"MinBusPower_{a}_{b}_{t}"
+            )
+            for (a, b) in self.data.bus_reactance.keys()
+            for t in self.data.timeSpan
+        }'
+        '''
 
         self.model.addConstr(self.variables.flow[1], GRB.EQUAL, 0, name=f"Flow1")
 
