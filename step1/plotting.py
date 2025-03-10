@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+# Plotting parameters: 
+plt.rcParams['font.family'] = 'serif' 
+plt.rcParams['font.size'] = 14
 
 def plotting_results(model):
 # Plotting the results of the optimization problem
@@ -63,6 +66,10 @@ def plot_generation_and_bid(input_data, hour=0):
     plt.step(cumulative_generation, generation_prices, where='post', label='Generation Supply Curve', color='blue')
     
     # Plot Demand Bid Curve (line with markers)
+    cumulative_load_mw_bid = np.append(cumulative_load_mw_bid, cumulative_load_mw_bid[-1])
+    bid_prices_desc = np.append(bid_prices_desc, 0)
+    cumulative_load_mw_bid = cumulative_load_mw_bid[1:]
+    bid_prices_desc = bid_prices_desc[1:]
     plt.step(cumulative_load_mw_bid, bid_prices_desc, label='Demand Bid Curve', color='orange')
     
     # Mark the equilibrium point (from the generation side)

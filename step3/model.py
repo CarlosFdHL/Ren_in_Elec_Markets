@@ -1,6 +1,7 @@
 import gurobipy as gp
 from gurobipy import GRB
 import pandas as pd
+import numpy as np
 
 from input_data import InputData
 
@@ -37,7 +38,7 @@ class Step1_model:
         }
 
         self.variables.angle = {
-            (n, t) : self.model.addVar(lb = -180, ub = 180, name=f"Angle_{n}")
+            (n, t) : self.model.addVar(lb = - np.pi, ub = np.pi, name=f"Angle_{n}")
             for n in self.data.nodes
             for t in self.data.timeSpan
         }
@@ -85,7 +86,7 @@ class Step1_model:
             (d, t): self.model.addConstr(self.variables.demand[d, t],
                                         GRB.LESS_EQUAL,
                                         self.data.demand_per_load[d,n]/100 * self.data.demand[t-1],
-                                        name=f"DemandUpperLimit_{t}")
+                                        name=f"DemandUpperLimit_{d}_{t}")
             for t in self.data.timeSpan
             for (d, n) in self.data.demand_per_load.keys()
         }
@@ -102,11 +103,12 @@ class Step1_model:
                 # Calculating net flow out of node n
                 net_flow = gp.quicksum((1/self.data.bus_reactance[n_, m]) * (self.variables.angle[n_, t] - self.variables.angle[m, t])
                                     for (n_, m) in self.data.bus_capacity.keys() 
-                                    if n_ == n) - \
-                        gp.quicksum((1/self.data.bus_reactance[m, n_]) * (self.variables.angle[m, t] - self.variables.angle[n_, t])
+                                    if n_ == n) + \
+                        gp.quicksum((1/self.data.bus_reactance[m, n_]) * (self.variables.angle[n_, t] - self.variables.angle[m, t])
                                     for (m, n_) in self.data.bus_capacity.keys() 
                                     if n_ == n)
-
+                print(f"Flujo neto en nodo {n} en tiempo {t}: {net_flow}")
+                print("-----------------")
                 # Demand at node n for time t, ensure loads are linked correctly
                 demand_at_node = gp.quicksum(self.variables.demand[d, t]
                                             for (d, load_n) in self.data.demand_per_load.keys()
@@ -114,15 +116,13 @@ class Step1_model:
 
                 # Adding the balance constraint
                 self.constraints.demand_equal_production[n, t] = self.model.addConstr(
-                    -(generation_at_node + net_flow),
+                    demand_at_node + net_flow ,
                     GRB.EQUAL,
-                    -demand_at_node,
+                    generation_at_node,
                     name=f"BusBalance_n{n}_t{t}"
                 )
-
-
         
-        self.constraints.max_bus_power = {
+        self.constraints.max_bus_capacity = {
             (n, m, t): self.model.addConstr(
                 1/ self.data.bus_reactance[n, m] * (self.variables.angle[n, t] - self.variables.angle[m, t]),
                 GRB.LESS_EQUAL, 
@@ -133,7 +133,7 @@ class Step1_model:
             for t in self.data.timeSpan
         }
 
-        self.constraints.min_bus_power = {
+        self.constraints.min_bus_capacity = {
             (n, m, t): self.model.addConstr(
                 1/ self.data.bus_reactance[n, m] * (self.variables.angle[n, t] - self.variables.angle[m, t]),
                 GRB.GREATER_EQUAL, -self.data.bus_capacity[n, m],
@@ -143,8 +143,10 @@ class Step1_model:
             for t in self.data.timeSpan
         }
 
-        for t in self.data.timeSpan:
-            self.model.addConstr(self.variables.angle[1, t], GRB.EQUAL, 0, name=f"Angle1_{t}")
+        self.constraints.ref_angle = {
+            t: self.model.addConstr(self.variables.angle[1, t], GRB.EQUAL, 0, name=f"Angle1_{t}")
+            for t in self.data.timeSpan
+        }
 
         
     def build_objective_function(self):

@@ -5,10 +5,20 @@ import pandas as pd
 from input_data import InputData, generators, bid_offers, system_demand, demand_per_load, bus_reactance, bus_capacity
 from main import run_model  # Ensure this returns meaningful data
 
-def modify_capacity(factor):
-    # Create a new modified version of bus reactance
+def modify_capacity_all_buses(factor):
+    # Create a new modified version of bus capacity by modifying all values by a factor
     modified_bus_capacity = {key: value * factor for key, value in bus_capacity.items()}
     return InputData(generators, bid_offers, system_demand, demand_per_load, bus_reactance, modified_bus_capacity)
+
+def modify_capacity_bus(bus, value):
+    # Create a new modified version of bus capacity by modifying 1 value by a factor
+    keys = list(bus_capacity.keys())  
+    if bus < len(keys):
+        key_to_update = keys[bus]  
+        bus_capacity[key_to_update] = value  
+    else:
+        print(f"Index {bus} is out of range.")  
+    return key_to_update, InputData(generators, bid_offers, system_demand, demand_per_load, bus_reactance, bus_capacity)
 
 def sensitivity_analysis():
     # Original input data
@@ -18,18 +28,31 @@ def sensitivity_analysis():
     print("Running model with original capacity values...")
     results_original = run_model(original_input_data) 
 
-    increased_capacity_data = modify_capacity(0.8)
+    increased_capacity_data = modify_capacity_all_buses(0.8)
     print("\nRunning model with increased capacity values (+20%)...")
     results_increased = run_model(increased_capacity_data) 
 
-    decreased_capacity_data = modify_capacity(1.2)
+    decreased_capacity_data = modify_capacity_all_buses(1.2)
     print("\nRunning model with decreased capacity values (-20%)...")
     results_decreased = run_model(decreased_capacity_data)
 
-    
-    plot_nodal_prices(results_original, results_increased, results_decreased)
+    modified_bus = 21
+    price_sensitivity_n = []
+    price_sensitivity_m = []
+    for i in [0, 10, 50, 100, 200, 500, 1000]:
+        try:
+            affected_nodes, increased_capacity_data = modify_capacity_bus(modified_bus, i)
+            results = run_model(increased_capacity_data)
+            result_value_n = results.get((affected_nodes[0], 1), 0)
+            result_value_m = results.get((affected_nodes[1], 1), 0)
+            price_sensitivity_n.append(result_value_n)
+            price_sensitivity_m.append(result_value_m)
+        except Exception as e:
+            print(f"Error processing capacity {i}: {e}")
 
-def plot_nodal_prices(results_original, results_increased, results_decreased):
+    plot_nodal_prices(results_original, results_increased, results_decreased, affected_nodes, price_sensitivity_n, price_sensitivity_m)
+
+def plot_nodal_prices(results_original, results_increased, results_decreased, affected_nodes, price_sensitivity_n, price_sensitivity_m):
     # Extract all unique buses and hours
     nodes = sorted(set(n for (n, _) in results_original.keys()))
     hours = sorted(set(t for (_, t) in results_original.keys()))
@@ -82,6 +105,13 @@ def plot_nodal_prices(results_original, results_increased, results_decreased):
         # add_labels(rects2)
         # add_labels(rects3)
         
+        fig, ax = plt.subplots(figsize=(15, 8))
+        ax.plot([0, 10, 50, 100, 200, 500, 1000], price_sensitivity_n, marker='o', label = 'Node n')
+        ax.plot([0, 10, 50, 100, 200, 500, 1000], price_sensitivity_m, marker='o', label = 'Node m')
+        ax.set_xlabel('Capacity (MW)')
+        ax.set_ylabel('Nodal Price ($/MWh)')
+        ax.set_title(f'Nodal Price Sensitivity at Bus {(affected_nodes[0], affected_nodes[1] )} for Hour {display_hour}')
+        ax.grid(True, linestyle='--', alpha=0.7)
         plt.tight_layout()
        # plt.savefig(f'nodal_prices_hour_{display_hour}.png')
         plt.show()

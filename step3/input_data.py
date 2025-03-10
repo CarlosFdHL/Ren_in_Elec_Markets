@@ -121,6 +121,9 @@ demand_per_load = {(int(row['Load']), int(row['Node'])): row['Demand'] for index
 bus_reactance = pd.read_csv(bus_reactance_path)
 bus_reactance = {(row['From Bus'], row['To Bus']): row['Reactance'] for index, row in bus_reactance.iterrows()}
 
+for key, value in bus_reactance.items():
+    bus_reactance[key] = 0.002
+
 # Load bus capacity
 bus_capacity = pd.read_csv(bus_capacity_path)
 bus_capacity = {(row['From Bus'], row['To Bus']): row['Capacity'] for index, row in bus_capacity.iterrows()}
