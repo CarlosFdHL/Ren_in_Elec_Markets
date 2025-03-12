@@ -4,7 +4,7 @@ import os
 # Description: This file contains the InputData class that is used to store the technical data for each generator and the system demand data.
 
 # The class is used to instantiate an object that is passed to the model class to build the optimization model.
-class InputData:
+class InputDataDayAhead:
     def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict):  
         # Initialize dictionaries to store the technical data for each generator
         self.generators = [i for i in range(1,len(generators)+1)]
@@ -19,10 +19,15 @@ class InputData:
         self.RU = {}
         self.RD = {}
         self.wind = {}
+        self.offers_regulation = {}
+        self.variation = {}
+
         self.bid_offers = bid_offers
         self.demand = demand
         self.demand_bid_price = [] 
         self.demand_per_load = demand_per_load
+        self.curtailment_cost = 500
+        self.regulation_pricing = 'one price' # 'one price' or 'two price'
 
         #Adjust demand
         num_hours = len(self.timeSpan)
@@ -36,7 +41,7 @@ class InputData:
         self.demand = adjusted_demand
 
         # Populate the dictionaries with data from the generators input
-        for gen in generators:
+        for i, gen in enumerate(generators):
             unit_id = gen['Unit #']
             self.Pmax[unit_id] = gen['Pmax (MW)']
             self.Pmin[unit_id] = gen['Pmin (MW)']
@@ -47,6 +52,9 @@ class InputData:
             self.RU[unit_id] = gen['RU (MW/h)']
             self.RD[unit_id] = gen['RD (MW/h)']
             self.wind[unit_id] = gen['wind']
+            self.offers_regulation[unit_id] = gen["Offers Regulation"]
+            self.variation[unit_id] = gen["Variation in production (pu)"]
+
         
         sorted_keys = sorted(bid_offers, key=lambda k: bid_offers[k])
         sorted_power = []
@@ -69,7 +77,7 @@ class InputData:
             for i, (key, load) in enumerate(demand_per_load.items()):
                 demand_bid_price[key] = last_bid_demand * np.exp(exponential_increment * i)
             self.demand_bid_price.append(demand_bid_price)
-        print("Demand bid price: ", self.demand_bid_price)
+        
 
 script_dir = os.path.dirname(__file__)
 wind_cf_path = os.path.join(script_dir, '../data/wind_capacity_factors.csv')
@@ -99,8 +107,12 @@ for index, row in generators.iterrows():
 generators = generators.to_dict(orient='records') # Convert to list of dictionaries
 
 # Load generator bid offers
-bid_offers = pd.read_csv(bid_offers_path)
-bid_offers = pd.Series(bid_offers.Price.values, index=bid_offers.Unit).to_dict()
+bid_offers_df = pd.read_csv(bid_offers_path)
+bid_offers = pd.Series(bid_offers_df.Bid.values, index=bid_offers_df.Unit).to_dict()
+
+# Load regulation bid prices
+up_regulation_bid = pd.Series(bid_offers_df.up_regulation.values, index=bid_offers_df.Unit).to_dict()
+down_regulation_bid = pd.Series(bid_offers_df.down_regulation.values, index=bid_offers_df.Unit).to_dict()
 
 # Load System demand values in MW for each hour
 system_demand = pd.read_csv(system_demand_path)
@@ -111,10 +123,12 @@ demand_per_load = pd.read_csv(demand_per_load_path)
 demand_per_load = {(int(row['Load'])): row['Demand'] for index, row in demand_per_load.iterrows()}
 
 
+
+
 if __name__ == "__main__":
     # Use in case you want to access the data directly
 
-    input_data = InputData(generators, bid_offers, system_demand, demand_per_load)
+    input_data = InputDataDayAhead(generators, bid_offers, system_demand, demand_per_load)
 
     # Accessing data for a specific unit
     print("Generators: ", input_data.generators)
