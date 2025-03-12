@@ -3,7 +3,7 @@ from gurobipy import GRB
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from input_data import InputData
+from input_data_day_ahead import InputDataDayAhead
 
 class Expando(object):
     '''
@@ -11,10 +11,10 @@ class Expando(object):
     '''
     pass
 
-class Step1_model:
-    # Step1_model is a class that represents the optimization model. It receives an instance of the InputData class to build the optimization model and solve it.
+class DayAheadModel:
+    # DayAhead_model is a class that represents the optimization model. It receives an instance of the InputData class to build the optimization model and solve it.
 
-    def __init__(self, input_data: InputData):
+    def __init__(self, input_data: InputDataDayAhead):
         # Initialize model attributes
 
         self.data = input_data
