@@ -69,8 +69,8 @@ if __name__ == "__main__":
         "battery_capacities": [0, 200],  # MWh
         "charging_rates": [100, 100],  # MW (same for both scenarios)
         "discharge_rates": [100, 100],  # MW (same for both scenarios)
-        "charge_efficiencies": [0.95, 0.95],  # Same for both scenarios
-        "discharge_efficiencies": [0.95, 0.95],  # Same for both scenarios
+        "charge_efficiencies": [0.95],  # Same for both scenarios
+        "discharge_efficiencies": [0.95],  # Same for both scenarios
     }
 
     # Run sensitivity analysis
@@ -79,6 +79,7 @@ if __name__ == "__main__":
     # Save results to CSV
     results_df.to_csv("hourly_price_sensitivity_results.csv", index=False)
     print(results_df)
+    
 
     # Plot hourly prices for battery ON and OFF scenarios
     if not results_df.empty:
@@ -92,13 +93,24 @@ if __name__ == "__main__":
             (results_df["Battery Capacity (MWh)"] == 200)
         ]
 
-        # Plot both scenarios on the same graph
+        # Plot both scenarios on the same graph with transparency
         plt.figure(figsize=(10, 6))
-        plt.plot(battery_off_df["Hour"], battery_off_df["Market Price ($/MWh)"], marker="o", color="red", label="Battery OFF (0 MWh)")
-        plt.plot(battery_on_df["Hour"], battery_on_df["Market Price ($/MWh)"], marker="o", color="blue", label="Battery ON (200 MWh)")
+        plt.scatter(
+            battery_off_df["Hour"], battery_off_df["Market Price ($/MWh)"],
+            color="red", label="Battery OFF (0 MWh)", alpha=0.9
+        )
+
+        # Plot battery ON scenario (step plot)
+        plt.scatter(
+            battery_on_df["Hour"], battery_on_df["Market Price ($/MWh)"],
+            color="blue", label="Battery ON (200 MWh)", alpha=0.2
+        )
+        
         plt.xlabel("Hour")
         plt.ylabel("Market Price ($/MWh)")
         plt.title("Hourly Market-Clearing Prices: Battery ON vs. OFF")
         plt.legend()
         plt.grid(True)
         plt.show()
+
+# something so the plots are shown even if they are the same values.
