@@ -11,7 +11,7 @@ class InputData:
         self.timeSpan = [i for i in range(1,2)]
         self.loads = [i for i in range(1,len(demand_per_load)+1)]
         self.nodes = [i for i in range(1,25)]
-        self.zones = [i for i in range(1,3)] #2 zones
+        self.zones = ["Zone A", "Zone B"] #2 zones
         self.Pmax = {}
         self.Pmin = {}
         self.Max_up_reserve = {}
@@ -29,7 +29,16 @@ class InputData:
         self.bus_reactance = bus_reactance  # Store bus_reactance
         self.bus_capacity = bus_capacity  # Store bus_capacity
         self.zone_mapping = zone_mapping  # Store zone_mapping
-        self.atc = []
+        self.atc = bus_capacity[3, 24] + bus_capacity[11, 14] + bus_capacity[11,13] + bus_capacity[12, 13] + bus_capacity[12, 23]
+        self.demand_per_zone = {
+            (zone) : 0
+            for zone in self.zones
+            }
+        for (_, node), demand_value in self.demand_per_load.items():
+            zone = self.zone_mapping.get(node) 
+            if zone: 
+                self.demand_per_zone[zone] += demand_value
+    
 
 
         #Adjust demand
@@ -58,7 +67,7 @@ class InputData:
             self.P_node[unit_id] = gen['Node']
         
         sorted_keys = sorted(bid_offers, key=lambda k: bid_offers[k])
-        sorted_power = []
+        sorted_power = []       
         
         for t, _ in enumerate(self.timeSpan):
             demand_bid_price = {}
@@ -117,9 +126,10 @@ bid_offers = pd.Series(bid_offers.Bid.values, index=bid_offers.Unit).to_dict()
 system_demand = pd.read_csv(system_demand_path)
 system_demand = system_demand['Demand'].tolist()
 
-# Load demand per load
+# Load demand per Node
 demand_per_load = pd.read_csv(demand_per_load_path)
 demand_per_load = {(int(row['Load']), int(row['Node'])): row['Demand'] for index, row in demand_per_load.iterrows()}
+
 
 # Load bus reactance
 bus_reactance = pd.read_csv(bus_reactance_path)
@@ -140,6 +150,7 @@ zone_mapping = {
     17: "Zone B", 18: "Zone B", 19: "Zone B", 20: "Zone B", 
     21: "Zone B", 22: "Zone B", 23: "Zone B", 24: "Zone B"
 }
+
 
 
 

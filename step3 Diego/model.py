@@ -33,16 +33,18 @@ class Step3_zonal:
             for g in self.data.generators
             for t in self.data.timeSpan
         }
+
         self.variables.demand = {
-            (d, t): self.model.addVar(lb = 0, name=f"Demand_{t}")
+            (d, t): self.model.addVar(lb = 0, name=f"Demand_{d}_{t}")
             for t in self.data.timeSpan
             for d in self.data.loads
         }
-
+       
         self.variables.flow = {
-            (a,b,t) : self.model.addVar(lb =-self.data.atc[a, b] , ub =self.data.atc[a, b], name=f"flow_{a}_{b}_{t}")
-            for (a,b) in self.data.atc.keys()
-            for t in self.data.timeSpan     
+            (a, b, t) : self.model.addVar(lb =-self.data.atc , ub =self.data.atc, name=f"flow_{a}_{b}_{t}")
+            for t in self.data.timeSpan   
+            for a in self.data.zones
+            for b in self.data.zones if b != a  
         }
         
     def build_constraints(self):
@@ -82,65 +84,37 @@ class Step3_zonal:
         self.constraints.demand_upper_limit = {
             (d, t): self.model.addConstr(self.variables.demand[d, t],
                                         GRB.LESS_EQUAL,
-                                        self.data.demand_per_load[d,a]/100 * self.data.demand[t-1],
-                                        name=f"DemandUpperLimit_{t}")
+                                        self.data.demand_per_load[d, n]/100 * self.data.demand[t-1],
+                                        name=f"DemandUpperLimit_{d}_{t}")
             for t in self.data.timeSpan
-            for (d, a) in self.data.demand_per_load.keys()
+            for (d, n) in self.data.demand_per_load.keys()
         }
 
-        self.constraints.demand_equal_production = {
-            (a, t): self.model  .addConstr(
-                gp.quicksum(self.variables.demand[d, t] for d in self.data.loads if self.data.zone_mapping[d] == a) 
-                -gp.quicksum(self.variables.flow[a, b, t] for b in self.data.zones[a] if (a, b) in self.data.atc) 
-                -gp.quicksum(self.variables.flow[b, a, t] for b in self.data.zones[a] if (b, a) in self.data.atc) 
-                -gp.quicksum(self.variables.production[g, t] for g in self.data.generators if self.data.zone_mapping[g] == a),
-                GRB.EQUAL, 0, name=f"ZonalBalance_{a}_{t}")
-            for (d,a) in self.data.demand_per_load.keys()
+        self.constraints.demand_equal_production = { 
+            (a, t): self.model.addConstr(
+                gp.quicksum(self.variables.demand[d, t] 
+                    for (d, n) in self.data.demand_per_load.keys()  # Obtener nodo desde la demanda
+                    if self.data.zone_mapping[n] == a) 
+                + gp.quicksum(self.variables.flow[a, b, t] for b in self.data.zones if b != a)
+                - gp.quicksum(self.variables.production[g, t] 
+                    for g in self.data.generators 
+                    if self.data.zone_mapping[self.data.P_node[g]] == a),
+                GRB.EQUAL, 0, name=f"ZonalBalance_{a}_{t}"
+            )
+            for a in self.data.zones
             for t in self.data.timeSpan
         }
 
         self.constraints.flow_limits = {
             (a, b, t): self.model.addConstr(
-                self.variables.flow[a, b, t], GRB.LESS_EQUAL, self.data.atc[(a, b)],
-                name=f"FlowLimit_{a}_{b}_{t}")
-            for (a, b) in self.data.atc.keys()
+                self.variables.flow[a, b, t],
+                GRB.EQUAL, -self.variables.flow[b , a, t],
+                name=f"Flow_same_bus_{a}_{b}_{t}")
             for t in self.data.timeSpan
-        }
-        
-        '''
-        self.constraints.zonal_balance = {
-            (a, t): self.model.addConstr(
-                gp.quicksum(self.variables.demand[d, t] for d in self.data.loads if self.data.zone_mapping[self.data.bus_node[d]] == a) +
-                gp.quicksum(self.variables.flow[a, b, t] for b in self.data.zones[a] if (a, b) in self.data.atc) -
-                gp.quicksum(self.variables.flow[b, a, t] for b in self.data.zones[a] if (b, a) in self.data.atc) -
-                gp.quicksum(self.variables.production[g, t] for g in self.data.generators if self.data.zone_mapping[g] == a),
-                GRB.EQUAL, 0, name=f"ZonalBalance_{a}_{t}")
             for a in self.data.zones
-            for t in self.data.timeSpan
+            for b in self.data.zones if b != a
         }
-        
-        self.constraints.max_bus_power = {
-            (a, b, t): self.model.addConstr(
-                (self.variables.flow[a, b, t] for b in self.data.zones[a] if (a, b) in self.data.atc),
-                GRB.LESS_EQUAL, self.data.bus_capacity[a, b],
-                name=f"MaxBusPower_{a}_{b}_{t}"
-            )
-            for (a, b) in self.data.bus_reactance.keys()
-            for t in self.data.timeSpan
-        }
-
-        self.constraints.min_bus_power = {
-            (a, b, t): self.model.addConstr(
-                (self.variables.flow[a, b, t]for b in self.data.zones[a] if (a, b) in self.data.atc), 
-                GRB.GREATER_EQUAL, -self.data.bus_capacity[a, b],
-                name=f"MinBusPower_{a}_{b}_{t}"
-            )
-            for (a, b) in self.data.bus_reactance.keys()
-            for t in self.data.timeSpan
-        }'
-        '''
-
-        self.model.addConstr(self.variables.flow[1], GRB.EQUAL, 0, name=f"Flow1")
+            
 
         
     def build_objective_function(self):
@@ -203,11 +177,18 @@ class Step3_zonal:
             for g in self.data.generators:
                 self.results.production_data.at[t, g] = self.variables.production[g, t].X
                 self.results.sum_power += self.variables.production[g, t].X
-                self.results.profit_data.at[t, g] = self.results.zonal_price[t] * self.variables.production[g, t].X
+                self.results.profit_data.at[t, g] = self.results.zonal_price[a, t] * self.variables.production[g, t].X
             
         for t_index, t in enumerate(self.data.timeSpan):
             for key in self.data.loads: 
-                self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.zonal_price[t]) * self.variables.demand[key, t].X
+                self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.zonal_price[a, t]) * self.variables.demand[key, t].X
+        
+        self.results.flows = {
+            (a, b, t): self.variables.flow[a, b, t].X
+            for t in self.data.timeSpan
+            for a in self.data.zones
+            for b in self.data.zones if b != a
+        }
 
         
 
@@ -215,7 +196,8 @@ class Step3_zonal:
         # Print the results of the optimization problem
         print("\nPrinting results")
         pd.set_option('display.max_columns', None)
-
+        print("\nATC")
+        print(self.data.atc)
         print("\n1.- Zonal prices")
         for (a, t), price in self.results.zonal_price.items():
             print(f"Hour {t}; Zone {a}: {round(price, 3)} $/MWh")
@@ -234,6 +216,11 @@ class Step3_zonal:
         print(self.results.utility)
         pd.reset_option('display.max_columns')
 
+        print("\n5.-Flows between zones")
+        for (a, b, t), flow in self.results.flows.items():
+            print(f"Hour {t}; Zone {a} to Zone {b}: {round(flow, 3)} MW")
+
+    
 
     def run(self):
         # Makes sure the model is solved and saves the results
