@@ -108,7 +108,6 @@ class DayAheadModel:
             self.data.producers_cost += gp.quicksum(self.data.bid_offers[g] * self.variables.production[g, t] for g in self.data.generators)
         
         self.model.setObjective(self.data.demand_cost - self.data.producers_cost, GRB.MAXIMIZE)
-        #self.model.setObjective(producers_revenue, GRB.MINIMIZE)
 
     def build_model(self):
         # Creates the model and calls the functions to build the variables, constraints, and objective function
@@ -144,9 +143,9 @@ class DayAheadModel:
             t: constraint.Pi for t, constraint in self.constraints.demand_equal_production.items()
         }
 
-        self.results.production_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
-        self.results.profit_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators)
-        self.results.utility = pd.DataFrame(index=self.data.timeSpan, columns=self.data.demand_per_load)
+        self.results.production_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators, dtype=float)
+        self.results.profit_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators, dtype=float)
+        self.results.utility = pd.DataFrame(index=self.data.timeSpan, columns=self.data.demand_per_load, dtype=float)
 
         self.results.sum_power = 0
         for t, constraint in self.constraints.demand_equal_production.items():
@@ -158,7 +157,10 @@ class DayAheadModel:
         for t_index, t in enumerate(self.data.timeSpan):
             for key, power_consumption in self.data.demand_per_load.items():   
                 self.results.utility.at[t, key] = (self.data.demand_bid_price[t_index][key] - self.results.price[t]) * self.variables.demand[key, t].X
-
+        
+        self.results.production_data = self.results.production_data.round(1)
+        self.results.profit_data = self.results.profit_data.round(1)
+        self.results.utility = self.results.utility.round(1)
     def print_results(self):
         # Print the results of the optimization problem
         print("\nPrinting results")

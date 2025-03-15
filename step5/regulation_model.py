@@ -29,12 +29,12 @@ class RegulationModel:
         # Create the variables
         self.variables.upward_regulation = {
             (g, t): self.model.addVar(lb = 0, name=f"UpwardRegulation_{g}_{t}")
-            for g in self.data_da.data.generators
+            for g in self.data_da.data.generators 
             for t in self.data_da.data.timeSpan
         }
         self.variables.downward_regulation = {
             (g, t): self.model.addVar(lb = 0, name=f"DownwardRegulation_{g}_{t}")
-            for g in self.data_da.data.generators
+            for g in self.data_da.data.generators 
             for t in self.data_da.data.timeSpan
         }
         self.variables.demand_curtailment = {
@@ -53,7 +53,7 @@ class RegulationModel:
                 self.data_regulation.up_regulation_max[g, t],
                 name=f"UpwardRegulationMax_{g}_{t}"
             )
-            for g in self.data_da.data.generators if self.data_da.data.wind[g] == False
+            for g in self.data_da.data.generators if self.data_regulation.offers_regulation[g] == True
             for t in self.data_da.data.timeSpan
         }
 
@@ -64,21 +64,16 @@ class RegulationModel:
                 self.data_regulation.up_regulation_max[g, t],
                 name=f"DownwardRegulationMax_{g}_{t}"
             )
-            for g in self.data_da.data.generators if self.data_da.data.wind[g] == False
-            for t in self.data_da.data.timeSpan
-        }
-
-        self.data_regulation.balance ={
-            t: gp.quicksum(self.data_regulation.variation[g,t] for g in self.data_da.data.generators)
+            for g in self.data_da.data.generators if self.data_regulation.offers_regulation[g] == True
             for t in self.data_da.data.timeSpan
         }
 
         self.constraints.sum_equal_balance = {
             t: self.model.addConstr(
-                gp.quicksum(self.variables.upward_regulation[g, t] for g in self.data_da.data.generators) 
-                - gp.quicksum(self.variables.downward_regulation[g, t] for g in self.data_da.data.generators),
+                gp.quicksum(self.variables.upward_regulation[g, t] for g in self.data_da.data.generators if self.data_regulation.offers_regulation[g] == True) 
+                - gp.quicksum(self.variables.downward_regulation[g, t] for g in self.data_da.data.generators if self.data_regulation.offers_regulation[g] == True),
                 GRB.EQUAL,
-                self.data_regulation.balance[t],
+                - self.data_regulation.balance[t],
                 name=f"SumEqualBalance_{t}"
             )
             for t in self.data_da.data.timeSpan
@@ -87,14 +82,17 @@ class RegulationModel:
     def build_objective_function(self):
         # Create the objective function
 
-        self.data_regulation.upward_cost = gp.quicksum(self.variables.upward_regulation[g, t]
-                                            for g in self.data_da.data.generators for t in self.data_da.data.timeSpan) 
-        self.data_regulation.downward_cost = gp.quicksum(self.variables.downward_regulation[g, t]
-                                              for g in self.data_da.data.generators for t in self.data_da.data.timeSpan) 
+        self.data_regulation.upward_cost = gp.quicksum(self.variables.upward_regulation[g, t] * self.data_regulation.upward_regulation_bid[g, t]
+                                            for g in self.data_da.data.generators for t in self.data_da.data.timeSpan if self.data_regulation.offers_regulation[g] == True) 
+        self.data_regulation.downward_cost = gp.quicksum(self.variables.downward_regulation[g, t] * self.data_regulation.downward_regulation_bid[g, t]
+                                              for g in self.data_da.data.generators for t in self.data_da.data.timeSpan if self.data_regulation.offers_regulation[g] == True) 
         self.data_regulation.curtailment_cost = gp.quicksum(self.data_da.data.curtailment_cost * self.variables.demand_curtailment[d, t]
                                                 for d in self.data_da.data.loads for t in self.data_da.data.timeSpan)
         
-        self.model.setObjective(self.data_regulation.upward_cost - self.data_regulation.downward_cost, GRB.MINIMIZE)
+        self.model.setObjective(self.data_regulation.upward_cost 
+                                + self.data_regulation.downward_cost 
+                                + self.data_regulation.curtailment_cost, 
+                                GRB.MINIMIZE)
 
     def build_model(self):
         # Creates the model and calls the functions to build the variables, constraints, and objective function
@@ -117,55 +115,67 @@ class RegulationModel:
         print(f"Number of constraints: {self.model.NumConstrs}")
 
     def save_results(self):
-        # Save the results in the results attribute
-
         print("\nSaving results")
 
+        # Set initial results based on model and data available
         self.results.objective = self.model.objVal
-
-        self.results.balance_price = {
-            t: constraint.Pi for t, constraint in self.constraints.sum_equal_balance.items()
-        }
-        
-        self.results.demand_curtailment = pd.DataFrame(index=self.data_da.data.timeSpan, columns=self.data_da.data.loads)
-
-        for t in self.data_da.data.timeSpan:
-            for d in self.data_da.data.loads:
-                self.results.demand_curtailment.at[t, d] = self.variables.demand_curtailment[d, t].X
-        
         self.results.profit_data = self.data_da.results.profit_data
-        self.results.regulation_profit = pd.DataFrame(index=self.data_da.data.timeSpan, columns=self.data_da.data.generators)
-        if self.data_da.data.regulation_pricing.lower() == 'one price':
-            for t in self.data_da.data.timeSpan:
-                for g in self.data_da.data.generators:
-                    self.results.regulation_profit.at[t, g] = self.variables.upward_regulation[g, t].X * self.results.balance_price[t] -\
-                                                            self.variables.downward_regulation[g, t].X * self.results.balance_price[t]      
-                    self.results.profit_data.at[t, g] += self.results.regulation_profit.at[t, g]
-        elif self.data_da.data.regulation_pricing.lower() == 'two price':
-            for t in self.data_da.data.timeSpan:
-                for g in self.data_da.data.generators:
-                    self.results.regulation_profit.at[t, g] = self.variables.upward_regulation[g, t].X * self.data_da.results.price[t] -\
-                                                            self.variables.downward_regulation[g, t].X * self.data_da.results.price[t]
-                    self.results.profit_data.at[t, g] += self.results.regulation_profit.at[t, g]
+        self.results.balance_price = {t: constraint.Pi for t, constraint in self.constraints.sum_equal_balance.items()}
 
-        else: 
-            print("Invalid regulation pricing")
-            raise ValueError
+        # Define DataFrame structures
+        time_span, generators, loads = self.data_da.data.timeSpan, self.data_da.data.generators, self.data_da.data.loads
 
-        for t in self.data_da.data.timeSpan:
-            for g in self.data_da.data.generators:
-                self.results.demand_curtailment.at[t, g] = self.variables.demand_curtailment[g, t].X
+        # Initialize DataFrames
+        self.results.variation = pd.DataFrame(0, index=time_span, columns=generators, dtype=float)
+        self.results.demand_curtailment = pd.DataFrame(0, index=time_span, columns=loads, dtype=float)
+        self.results.regulation_profit = pd.DataFrame(0, index=time_span, columns=generators, dtype=float)
+        self.results.upward_regulation = pd.DataFrame(0, index=time_span, columns=generators, dtype=float)
+        self.results.downward_regulation = pd.DataFrame(0, index=time_span, columns=generators, dtype=float)
+        
+
+        # Populate DataFrames
+        for t in time_span:
+            for g in generators:
+                self.results.variation.at[t, g] = self.data_regulation.variation[g, t]
+                up_reg = self.variables.upward_regulation[g, t].X
+                down_reg = self.variables.downward_regulation[g, t].X
+                price = self.get_price(t, g, up_reg, down_reg)
+                self.results.regulation_profit.at[t, g] = round(price, 1)
+                self.results.profit_data.at[t, g] += self.results.regulation_profit.at[t, g]
+                self.results.upward_regulation.at[t, g] = up_reg
+                self.results.downward_regulation.at[t, g] = down_reg
+
+            for d in loads:
+                self.results.demand_curtailment.at[t, d] = self.variables.demand_curtailment[d, t].X
+
+    def get_price(self, t, g, up_reg, down_reg):
+        if (up_reg - down_reg) != 0: # The generator is helping the system 
+            if self.data_da.data.regulation_pricing.lower() == 'one price':
+                return (up_reg - down_reg) * self.results.balance_price[t]
+            elif self.data_da.data.regulation_pricing.lower() == 'two price':
+                return (up_reg - down_reg) * self.data_da.results.price[t]
+            else:
+                print("Invalid regulation pricing")
+                raise ValueError
+        else: # The generator is not helping the system
+            return self.data_regulation.variation[g, t] * self.results.balance_price[t] # Generator pays/gets paid the balancing price for the variation in production
+
 
     def print_results(self):
         # Print the results of the optimization problem
         print("\nPrinting results")
-        
+        pd.set_option('display.max_columns', None)
         print(f"Objective function value: {self.results.objective}")
 
         print("\nBalance price")
-        pd.set_option('display.max_columns', None)
+        
         print(self.results.balance_price)
-        pd.reset_option('display.max_columns')
+        
+        print("\nUpward regulation")
+        print(self.results.upward_regulation)
+
+        print("\nDownward regulation")
+        print(self.results.downward_regulation)
 
         print("\nDemand curtailment")
         print(self.results.demand_curtailment)
@@ -173,8 +183,16 @@ class RegulationModel:
         print("\nProfit for each producer")
         print(self.results.profit_data)
 
+        print("\nVariation of production")
+        print(self.results.variation)
+
         print("\nRegulation profit for each generator")
         print(self.results.regulation_profit)
+
+        print("\nTotal profit for each generator")
+        print(self.results.profit_data)
+
+        pd.reset_option('display.max_columns')
 
     def plotting_results(self):
     # Plotting the results of the optimization problem

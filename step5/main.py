@@ -20,8 +20,8 @@ if __name__ == "__main__":
     regulation_model.run()
     regulation_model.print_results()
 
-    plotting_results(model_day_ahead)
+    #plotting_results(model_day_ahead)
     
-    plotting_bid(input_data)
+    #plotting_bid(input_data)
 
     print("End of main.py")
