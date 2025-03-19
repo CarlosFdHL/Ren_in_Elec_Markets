@@ -7,8 +7,8 @@ from main import run_model  # Ensure this returns meaningful data
 
 def modify_capacity(factor):
     # Create a new modified version of bus reactance
-    modified_bus_reactance = {key: value * factor for key, value in bus_reactance.items()}
-    return InputData(generators, bid_offers, system_demand, demand_per_load, modified_bus_reactance, bus_capacity)
+    modified_bus_capacity = {key: value * factor for key, value in bus_reactance.items()}
+    return InputData(generators, bid_offers, system_demand, demand_per_load, bus_reactance, modified_bus_capacity)
 
 def sensitivity_analysis():
     # Original input data
@@ -30,8 +30,6 @@ def sensitivity_analysis():
     plot_nodal_prices(results_original, results_increased, results_decreased)
 
 
-import matplotlib.pyplot as plt
-import numpy as np
 
 def plot_nodal_prices(results_original, results_increased, results_decreased):
     # Extract all unique buses and hours
