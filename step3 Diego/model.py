@@ -1,7 +1,7 @@
 import gurobipy as gp
 from gurobipy import GRB
 import pandas as pd
-
+import matplotlib.pyplot as plt
 from input_data import InputData
 
 class Expando(object):
@@ -22,8 +22,6 @@ class Step3_zonal:
         self.constraints = Expando()
         self.results = Expando()
         self.build_model()
-    
-
 
     def build_variables(self):
         # Create the variables
@@ -114,8 +112,6 @@ class Step3_zonal:
             for a in self.data.zones
             for b in self.data.zones if b != a
         }
-            
-
         
     def build_objective_function(self):
         # Create the objective function
@@ -153,7 +149,6 @@ class Step3_zonal:
         print(f"Number of variables: {self.model.NumVars}")
         print(f"Number of constraints: {self.model.NumConstrs}")
 
-
     def save_results(self):
         # Save the results in the results attribute
 
@@ -190,38 +185,118 @@ class Step3_zonal:
             for b in self.data.zones if b != a
         }
 
-        
+        self.results.zone_generation = {
+            (a, t): sum(
+                self.variables.production[g, t].X
+                for g in self.data.generators
+                if self.data.zone_mapping[self.data.P_node[g]] == a
+            )
+            for a in self.data.zones
+            for t in self.data.timeSpan
+        }
+
+        self.results.zone_demand = {
+            (a, t): sum(
+                self.variables.demand[d, t].X
+                for (d, n) in self.data.demand_per_load.keys()
+                if self.data.zone_mapping[n] == a
+            )
+            for a in self.data.zones
+            for t in self.data.timeSpan
+        }
 
     def print_results(self):
         # Print the results of the optimization problem
-        print("\nPrinting results")
-        pd.set_option('display.max_columns', None)
-        print("\nATC")
-        print(self.data.atc)
-        print("\n1.- Zonal prices")
-        for (a, t), price in self.results.zonal_price.items():
-            print(f"Hour {t}; Zone {a}: {round(price, 3)} $/MWh")
-
-        print(f"\n2.-Social welfare of the system: {self.results.objective}")
-
-        print("\nProduction for each generator")
-        print(self.results.production_data)
-        print("Sum of all generations: ",self.results.sum_power, "MW")
-
-        print("\n3.-Profit for each producer")
-        print(self.results.profit_data)
-
-        print("\n4.-Utility of each demand")
         
-        print(self.results.utility)
-        pd.reset_option('display.max_columns')
-
-        print("\n5.-Flows between zones")
-        for (a, b, t), flow in self.results.flows.items():
-            print(f"Hour {t}; Zone {a} to Zone {b}: {round(flow, 3)} MW")
-
+        print('-' * 70)  
+        print(f'{"Printing results":^70}')
+        print('-' * 70)  
+        
+        pd.set_option('display.max_columns', None)
+        print("\nAvailable Transfer Capacity:", self.data.atc, "MW\n") 
     
+        print('-' * 50)     
+        #print("\n1.- Zonal prices")
+        print(f'{"1.-Zonal prices":^50}')
+        print('-' * 50)
+        print(f'{"Hour":^5} {"Zone":^10} {"Price":^18}')
+        for (a, t), price in self.results.zonal_price.items():
+            print(f'{t:^5} {a:^10} {round(price, 3):^16} $/MWh')
 
+        print(f"\n2.- Social Welfare of the System: {self.results.objective:.3f}\n")
+
+        print('-' * 50)
+        print(f'{"3.- Generation and Demand per Zone":^50}')
+        print('-' * 50)
+        print(f'{"Hour":^5} {"Zone":^10} {"Generation (MW)":^15} {"Demand (MW)":^18}')
+        for t in self.data.timeSpan:
+            for a in self.data.zones:
+                generation = self.results.zone_generation[a, t]
+                demand = self.results.zone_demand[a, t]
+                print(f'{t:^5} {a:^10} {round(generation, 2):^15} {round(demand, 2):^18}')
+        print("\n")       
+
+        print('-' * 50)    
+        print(f'{"4.-Flows between zones":^50}')
+        print('-' * 50)   
+        print(f'{"Hour":^5} {"From Zone":^10} {"To Zone":^15} {"Flow (MW)":^18}')
+        for (a, b, t), flow in self.results.flows.items():
+            print(f'{t:^5} {a:^10} {b:^15} {round(flow, 3):^18} MW')
+        print('-' * 50)
+        print("\n")   
+
+
+        '''
+        print('-' * 50)     
+        print(f'{"5.- Production for Each Generator":^40}')
+        print('-' * 50)
+        print(f'{"Hour":^5} {"Generator":^15} {"Production (MW)":^18}')
+        for (g, t), production in self.results.production.items():
+            print(f'{t:^5} {g:^15} {round(production, 3):^18} MW')
+        print('-' * 50)
+        #print("Sum of all generations: ", self.results.sum_power, "MW")
+        print("\n")
+
+        print('-' * 50)     
+        print(f'{"6.- Profit for Each Producer":^40}')
+        print('-' * 50)
+        print(f'{"Hour":^5} {"Generator":^15} {"Profit ($)":^18}')
+        for (g, t), profit in self.results.profit_data.stack().items():
+            print(f'{g:^5} {t:^15} {round(profit, 2):^18} $')
+        print('-' * 50)
+        print('-' * 50)     
+        print(f'{"7.- Utility of Each Demand":^40}')
+        print('-' * 50)
+        print(f'{"Hour":^5} {"Load":^15} {"Utility ($)":^18}')
+        for (t, key), utility in self.results.utility.stack().items():
+            print(f'{t:^5} {key:^15} {round(utility, 2):^18} $')
+        '''
+        print('-' * 70)
+
+        ###################################################
+        
+        #Plotting the zonal prices 
+        
+        zonal_price_dict = self.results.zonal_price  
+        df_prices = pd.DataFrame(
+            [(t, zone, price) for (zone, t), price in zonal_price_dict.items()],
+             columns=["Time", "Zone", "Price"]
+)
+        df_plot = df_prices.pivot(index="Time", columns="Zone", values="Price")
+
+        plt.figure(figsize=(10, 6))
+        for zone in df_plot.columns:
+            plt.plot(df_plot.index, df_plot[zone], marker='o', label=zone)
+
+        plt.title("Market Clearing Price by Zone over Time")
+        plt.xlabel("Hour")
+        plt.ylabel("Price ($/MWh)")
+        plt.grid(True)
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+
+        #######################################################
     def run(self):
         # Makes sure the model is solved and saves the results
         
