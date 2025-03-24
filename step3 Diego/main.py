@@ -1,5 +1,6 @@
 from input_data import *
 from model import Step3_zonal
+import matplotlib.pyplot as plt
 
 
 def run_model(input_data):
@@ -17,5 +18,5 @@ if __name__ == "__main__":
     model = Step3_zonal(input_data)
     model.run()
     model.print_results()
-
+    
     print("End of main.py")
