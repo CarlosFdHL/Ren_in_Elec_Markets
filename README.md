@@ -112,6 +112,7 @@ cd step5/
 python main.py
 ```
 **Change from one and two price scheme**
+
 Change variable self.regulation_pricing on line 35 of the file input_data_day_ahead.py.
 
 
