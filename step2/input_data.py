@@ -27,8 +27,8 @@ class InputData:
         self.max_battery_storage = 450 # MWh
         self.max_battery_charging_power = 300 # MW
         self.max_battery_discharging_power = 300# MW
-        self.battery_charge_efficiency = 0.95#0.86#0.75
-        self.battery_discharge_efficiency = 0.95#0.96#0.86
+        self.battery_charge_efficiency = 0.94#0.86#0.75
+        self.battery_discharge_efficiency = 0.96#0.96#0.86
 
         #Adjust demand
         num_hours = len(self.timeSpan)
