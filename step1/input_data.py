@@ -6,10 +6,14 @@ import os
 # The class is used to instantiate an object that is passed to the model class to build the optimization model.
 class InputData:
     def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict):  
-        # Initialize dictionaries to store the technical data for each generator
+        # Initialize dictionaries to store data
+
+        # SETS 
         self.generators = [i for i in range(1,len(generators)+1)]
         self.timeSpan = [i for i in range(1,2)]
         self.loads = [i for i in range(1,len(demand_per_load)+1)]
+
+        # GENERATOR DATA
         self.Pmax = {}
         self.Pmin = {}
         self.Max_up_reserve = {}
@@ -19,19 +23,20 @@ class InputData:
         self.RU = {}
         self.RD = {}
         self.wind = {}
+
+        # BID OFFERS
         self.bid_offers = bid_offers
         self.demand = demand
         self.demand_bid_price = [] 
         self.demand_per_load = demand_per_load
 
-        #Adjust demand
+        # Adjust demand to the time span
         num_hours = len(self.timeSpan)
         num_days = num_hours // 24
         if num_hours <= 24:
             factor = 24 / num_hours
             adjusted_demand = [self.demand[int(i * factor)] for i in range(num_hours)]
         else:
-            # Repeats the demands in order
             adjusted_demand = [self.demand[i % 24] for i in range(num_hours)]
         self.demand = adjusted_demand
 
@@ -48,6 +53,7 @@ class InputData:
             self.RD[unit_id] = gen['RD (MW/h)']
             self.wind[unit_id] = gen['wind']
         
+        # CALCULATE DEMAND BID PRICE
         sorted_keys = sorted(bid_offers, key=lambda k: bid_offers[k])
         sorted_power = []
         
@@ -69,8 +75,12 @@ class InputData:
             for i, (key, load) in enumerate(demand_per_load.items()):
                 demand_bid_price[key] = last_bid_demand * np.exp(exponential_increment * i)
             self.demand_bid_price.append(demand_bid_price)
-        print("Demand bid price: ", self.demand_bid_price)
 
+# --------------------------------------------------------------------------------
+#       LOAD DATA FROM FILES
+# --------------------------------------------------------------------------------
+
+# PATHS
 script_dir = os.path.dirname(__file__)
 wind_cf_path = os.path.join(script_dir, '../data/wind_capacity_factors.csv')
 generatorData_path = os.path.join(script_dir, '../data/GeneratorData.csv')
@@ -78,12 +88,12 @@ bid_offers_path = os.path.join(script_dir, '../data/bid_offers.csv')
 system_demand_path = os.path.join(script_dir, '../data/system_demand.csv')
 demand_per_load_path = os.path.join(script_dir, '../data/demand_per_load.csv')
 
-# Wind farm data
+# WIND FARM CAPACITY FACTORS
 wind_farm_capacity = 200
 wind_CF = pd.read_csv(wind_cf_path)['wind_cf'].tolist()
 wind_CF = [cf * wind_farm_capacity for cf in wind_CF]
 
-# Load generator data
+# GENERATORS
 dtype_dict = {
     'Node': int,'Pmax (MW)': object, 'Pmin (MW)': float, 'R+ (MW)': float, 'R- (MW)': float,
     'RU (MW/h)': float, 'RD (MW/h)': float, 'UT (h)': int, 'DT (h)': int
@@ -92,21 +102,21 @@ generators = pd.read_csv(generatorData_path, dtype=dtype_dict)
 
 for index, row in generators.iterrows():
     if row['wind']:
-        generators.at[index, 'Pmax (MW)'] = wind_CF.copy() # Assign the wind capacity factors
+        generators.at[index, 'Pmax (MW)'] = wind_CF.copy() 
     else:
-        generators.at[index, 'Pmax (MW)'] = float(row['Pmax (MW)']) # Convert to float
+        generators.at[index, 'Pmax (MW)'] = float(row['Pmax (MW)']) 
 
-generators = generators.to_dict(orient='records') # Convert to list of dictionaries
+generators = generators.to_dict(orient='records')
 
-# Load generator bid offers
+# GENERATORS BID OFFERS
 bid_offers = pd.read_csv(bid_offers_path)
 bid_offers = pd.Series(bid_offers.Bid.values, index=bid_offers.Unit).to_dict()
 
-# Load System demand values in MW for each hour
+# SYSTEM DEMAND
 system_demand = pd.read_csv(system_demand_path)
 system_demand = system_demand['Demand'].tolist()
 
-# Load demand per load
+# DEMAND PER LOAD
 demand_per_load = pd.read_csv(demand_per_load_path)
 demand_per_load = {(int(row['Load'])): row['Demand'] for index, row in demand_per_load.iterrows()}
 

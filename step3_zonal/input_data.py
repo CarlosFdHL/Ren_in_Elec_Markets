@@ -8,11 +8,15 @@ class InputData:
     def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict, 
                  bus_reactance: dict, bus_capacity: dict, zone_mapping: dict, atc=None):   
         # Initialize dictionaries to store the technical data for each generator
+        
+        # SETS
         self.generators = [i for i in range(1,len(generators)+1)]
         self.timeSpan = [i for i in range(1,25)]
         self.loads = [i for i in range(1,len(demand_per_load)+1)]
         self.nodes = [i for i in range(1,25)]
         self.zones = ["Zone A", "Zone B"] #2 zones
+
+        # GENERATOR DATA
         self.Pmax = {}
         self.Pmin = {}
         self.Max_up_reserve = {}
@@ -22,15 +26,19 @@ class InputData:
         self.RU = {}
         self.RD = {}
         self.wind = {}
-        self.P_node = {}
+        self.P_node = {} # Store the node of each generator
+
+        # BID OFFERS
         self.bid_offers = bid_offers
         self.demand = demand
         self.demand_bid_price = [] 
         self.demand_per_load = demand_per_load
+
+        # GRID DATA
         self.bus_reactance = bus_reactance  # Store bus_reactance
         self.bus_capacity = bus_capacity  # Store bus_capacity
         self.zone_mapping = zone_mapping  # Store zone_mapping
-        self.atc = atc if atc is not None else bus_capacity[3, 24] #+ bus_capacity[11, 14] + bus_capacity[11,13] + bus_capacity[12, 13] + bus_capacity[12, 23]
+        self.atc = atc if atc is not None else bus_capacity[3, 24] + bus_capacity[11, 14] + bus_capacity[11,13] + bus_capacity[12, 13] + bus_capacity[12, 23]
         self.demand_per_zone = {
             (zone) : 0
             for zone in self.zones
@@ -42,14 +50,13 @@ class InputData:
     
 
 
-        #Adjust demand
+        # Adjust demand to the time span
         num_hours = len(self.timeSpan)
         num_days = num_hours // 24
         if num_hours <= 24:
             factor = 24 / num_hours
             adjusted_demand = [self.demand[int(i * factor)] for i in range(num_hours)]
         else:
-            # Repeats the demands in order
             adjusted_demand = [self.demand[i % 24] for i in range(num_hours)]
         self.demand = adjusted_demand
 
@@ -67,6 +74,7 @@ class InputData:
             self.wind[unit_id] = gen['wind']
             self.P_node[unit_id] = gen['Node']
         
+        # CALCULATE DEMAND BID PRICE
         sorted_keys = sorted(bid_offers, key=lambda k: bid_offers[k])
         sorted_power = []       
         
@@ -88,8 +96,12 @@ class InputData:
             for i, ((key, _), load) in enumerate(demand_per_load.items()):
                 demand_bid_price[key] = last_bid_demand * np.exp(exponential_increment * i)
             self.demand_bid_price.append(demand_bid_price)
-        print("Demand bid price: ", self.demand_bid_price)
 
+# --------------------------------------------------------------------------------
+#       LOAD DATA FROM FILES
+# --------------------------------------------------------------------------------
+
+# PATHS
 script_dir = os.path.dirname(__file__)
 wind_cf_path = os.path.join(script_dir, '../data/wind_capacity_factors.csv')
 generatorData_path = os.path.join(script_dir, '../data/GeneratorData.csv')
@@ -99,12 +111,12 @@ demand_per_load_path = os.path.join(script_dir, '../data/demand_per_load.csv')
 bus_reactance_path = os.path.join(script_dir, '../data/bus_reactance.csv')
 bus_capacity_path = os.path.join(script_dir, '../data/bus_capacity.csv')
 
-# Wind farm data
+# WIND FARM CAPACITY FACTORS
 wind_farm_capacity = 200
 wind_CF = pd.read_csv(wind_cf_path)['wind_cf'].tolist()
 wind_CF = [cf * wind_farm_capacity for cf in wind_CF]
 
-# Load generator data
+# GENERATORS
 dtype_dict = {
     'Node': int, 'Pmax (MW)': object, 'Pmin (MW)': float, 'R+ (MW)': float, 'R- (MW)': float,
     'RU (MW/h)': float, 'RD (MW/h)': float, 'UT (h)': int, 'DT (h)': int
@@ -119,30 +131,25 @@ for index, row in generators.iterrows():
 
 generators = generators.to_dict(orient='records') # Convert to list of dictionaries
 
-# Load generator bid offers
+# GENERATORS BID OFFERS
 bid_offers = pd.read_csv(bid_offers_path)
 bid_offers = pd.Series(bid_offers.Bid.values, index=bid_offers.Unit).to_dict()
 
-# Load System demand values in MW for each hour
+# SYSTEM DEMAND
 system_demand = pd.read_csv(system_demand_path)
 system_demand = system_demand['Demand'].tolist()
 
-# Load demand per Node
+# DEMAND PER LOAD
 demand_per_load = pd.read_csv(demand_per_load_path)
 demand_per_load = {(int(row['Load']), int(row['Node'])): row['Demand'] for index, row in demand_per_load.iterrows()}
 
-
-# Load bus reactance
+# GRID DATA
 bus_reactance = pd.read_csv(bus_reactance_path)
 bus_reactance = {(row['From Bus'], row['To Bus']): row['Reactance'] for index, row in bus_reactance.iterrows()}
-
-# Load bus capacity
 bus_capacity = pd.read_csv(bus_capacity_path)
 bus_capacity = {(row['From Bus'], row['To Bus']): row['Capacity'] for index, row in bus_capacity.iterrows()}
 
-# Zonal Framework 
-# Assign zones to nodes
-# Zone A: 1-12, Zone B: 13-24
+# ZONE MAPPING
 zone_mapping = {
     1: "Zone A", 2: "Zone A", 3: "Zone A", 4: "Zone A",
     5: "Zone A", 6: "Zone A", 7: "Zone A", 8: "Zone A",
@@ -151,10 +158,6 @@ zone_mapping = {
     17: "Zone B", 18: "Zone B", 19: "Zone B", 20: "Zone B", 
     21: "Zone B", 22: "Zone B", 23: "Zone B", 24: "Zone B"
 }
-
-
-
-
 
 if __name__ == "__main__":
     # Use in case you want to access the data directly

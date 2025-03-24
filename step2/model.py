@@ -150,10 +150,7 @@ class Step2_model:
                                                                        self.variables.battery_charging_power[1] * self.data.battery_charge_efficiency
                                                                         - self.variables.battery_discharging_power[1] /self.data.battery_discharge_efficiency, 
                                                                         name=f"StoredEnergy_1")
-
-
-        #self.model.addConstr(self.variables.stored_energy[24], GRB.EQUAL, 0, name=f"StoredEnergy_24")
-        
+                
         self.model.addConstr(self.variables.stored_energy[1], GRB.EQUAL, 0, name=f"StoredEnergy_1")
         
         
@@ -212,11 +209,14 @@ class Step2_model:
         self.results.utility = pd.DataFrame(index=self.data.timeSpan, columns=self.data.demand_per_load)
 
         self.results.sum_power = 0
+        self.results.battery_profit = 0
         for t, constraint in self.constraints.demand_equal_production.items():
             for g in self.data.generators:
                 self.results.production_data.at[t, g] = self.variables.production[g, t].X
                 self.results.sum_power += self.variables.production[g, t].X
                 self.results.profit_data.at[t, g] = self.results.price[t] * self.variables.production[g, t].X
+                self.results.battery_profit -= self.results.price[t] * self.variables.battery_discharging_power[t].X
+                self.results.battery_profit += self.results.price[t] * self.variables.battery_charging_power[t].X
             
         for t_index, t in enumerate(self.data.timeSpan):
             for key, power_consumption in self.data.demand_per_load.items():   
@@ -230,6 +230,8 @@ class Step2_model:
             t: self.variables.battery_discharging_power[t].X
             for t in self.data.timeSpan
         }
+
+        
 
     def print_results(self):
         # Print the results of the optimization problem
@@ -257,6 +259,9 @@ class Step2_model:
         _, stored_energy = zip(*self.variables.stored_energy.items())
         stored_energy = [float(value.X) for value in stored_energy]
         print(stored_energy)
+
+        print("\n6.-Battery profit")
+        print(self.results.battery_profit)
         
 
     def run(self):

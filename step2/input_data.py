@@ -6,10 +6,14 @@ import os
 # The class is used to instantiate an object that is passed to the model class to build the optimization model.
 class InputData:
     def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict, p_initial: dict):  
-        # Initialize dictionaries to store the technical data for each generator
+        # Initialize dictionaries to store data
+
+        # SETS         
         self.generators = [i for i in range(1,len(generators)+1)]
         self.timeSpan = [i for i in range(1,25)]
         self.loads = [i for i in range(1,len(demand_per_load)+1)]
+
+        # GENERATOR DATA
         self.Pmax = {}
         self.Pmin = {}
         self.Max_up_reserve = {}
@@ -19,18 +23,22 @@ class InputData:
         self.RU = {}
         self.RD = {}
         self.wind = {}
+
+        # BID OFFERS
         self.bid_offers = bid_offers
         self.demand = demand
         self.p_initial = p_initial
         self.demand_bid_price = [] 
         self.demand_per_load = demand_per_load
+
+        # BATTERY DATA
         self.max_battery_storage = 450 # MWh
         self.max_battery_charging_power = 300 # MW
-        self.max_battery_discharging_power = 300# MW
-        self.battery_charge_efficiency = 0.94#0.86#0.75
-        self.battery_discharge_efficiency = 0.96#0.96#0.86
+        self.max_battery_discharging_power = 300 # MW
+        self.battery_charge_efficiency = 0.94 
+        self.battery_discharge_efficiency = 0.96
 
-        #Adjust demand
+        # Adjust demand to the time span
         num_hours = len(self.timeSpan)
         num_days = num_hours // 24
         if num_hours <= 24:
@@ -54,6 +62,7 @@ class InputData:
             self.RD[unit_id] = gen['RD (MW/h)']
             self.wind[unit_id] = gen['wind']
         
+        # CALCULATE DEMAND BID PRICE
         sorted_keys = sorted(bid_offers, key=lambda k: bid_offers[k])
         sorted_power = []
         
@@ -76,6 +85,11 @@ class InputData:
                 demand_bid_price[key] = last_bid_demand * np.exp(exponential_increment * i)
             self.demand_bid_price.append(demand_bid_price)
 
+# --------------------------------------------------------------------------------
+#       LOAD DATA FROM FILES
+# --------------------------------------------------------------------------------
+
+# PATHS
 script_dir = os.path.dirname(__file__)
 p_initial_path = os.path.join(script_dir, '../data/p_ini.csv')
 wind_cf_path = os.path.join(script_dir, '../data/wind_capacity_factors.csv')
@@ -85,16 +99,16 @@ system_demand_path = os.path.join(script_dir, '../data/system_demand.csv')
 demand_per_load_path = os.path.join(script_dir, '../data/demand_per_load.csv')
 
 
-# Initial production data
+# INITIAL PRODUCTION
 p_initial = pd.read_csv(p_initial_path)
 p_initial = pd.Series(p_initial.P_ini.values, index=p_initial.Unit).to_dict()
 
-# Wind farm data
+# WIND FARM CAPACITY FACTORS
 wind_farm_capacity = 200
 wind_CF = pd.read_csv(wind_cf_path)['wind_cf'].tolist()
 wind_CF = [cf * wind_farm_capacity for cf in wind_CF]
 
-# Load generator data
+# GENERATORS
 dtype_dict = {
     'Node': int,'Pmax (MW)': object, 'Pmin (MW)': float, 'R+ (MW)': float, 'R- (MW)': float,
     'RU (MW/h)': float, 'RD (MW/h)': float, 'UT (h)': int, 'DT (h)': int
@@ -109,15 +123,15 @@ for index, row in generators.iterrows():
 
 generators = generators.to_dict(orient='records') # Convert to list of dictionaries
 
-# Load generator bid offers
+# GENERATOR BID OFFERS
 bid_offers = pd.read_csv(bid_offers_path)
 bid_offers = pd.Series(bid_offers.Bid.values, index=bid_offers.Unit).to_dict()
 
-# Load System demand values in MW for each hour
+# SYSTEM DEMAND
 system_demand = pd.read_csv(system_demand_path)
 system_demand = system_demand['Demand'].tolist()
 
-# Load demand per load
+# DEMAND PER LOAD
 demand_per_load = pd.read_csv(demand_per_load_path)
 demand_per_load = {(int(row['Load'])): row['Demand'] for index, row in demand_per_load.iterrows()}
 

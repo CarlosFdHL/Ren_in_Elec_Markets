@@ -7,9 +7,13 @@ import os
 class InputData:
     def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict, bid_reserve_up: dict, bid_reserve_down: dict):  
         # Initialize dictionaries to store the technical data for each generator
+        
+        # SETS
         self.generators = [i for i in range(1,len(generators)+1)]
         self.timeSpan = [i for i in range(1,25)]
         self.loads = [i for i in range(1,len(demand_per_load)+1)]
+        
+        # GENERATOR DATA
         self.Pmax = {}
         self.Pmin = {}
         self.Max_up_reserve = {}
@@ -20,16 +24,20 @@ class InputData:
         self.RD = {}
         self.wind = {}
         self.offers_regulation = {}
+
+        # BID OFFERS
         self.bid_offers = bid_offers
         self.demand = demand
         self.demand_bid_price = [] 
         self.demand_per_load = demand_per_load
         self.bid_reserve_up = bid_reserve_up
         self.bid_reserve_down = bid_reserve_down
+
+        # RESERVE NEEDED IN SYSTEM
         self.upward_reserve_needed = 0.15
         self.downward_reserve_needed = 0.1
 
-        #Adjust demand
+        # Adjust demand to the time span
         num_hours = len(self.timeSpan)
         num_days = num_hours // 24
         if num_hours <= 24:
@@ -54,7 +62,7 @@ class InputData:
             self.wind[unit_id] = gen['wind']
             self.offers_regulation[unit_id] = gen["Offers Regulation"]
 
-        
+        # CALCULATE DEMAND BID PRICE
         sorted_keys = sorted(bid_offers, key=lambda k: bid_offers[k])
         sorted_power = []
         
@@ -76,8 +84,12 @@ class InputData:
             for i, (key, load) in enumerate(demand_per_load.items()):
                 demand_bid_price[key] = last_bid_demand * np.exp(exponential_increment * i)
             self.demand_bid_price.append(demand_bid_price)
-        print("Demand bid price: ", self.demand_bid_price)
 
+# --------------------------------------------------------------------------------
+#       LOAD DATA FROM FILES
+# --------------------------------------------------------------------------------
+
+# PATHS
 script_dir = os.path.dirname(__file__)
 wind_cf_path = os.path.join(script_dir, '../data/wind_capacity_factors.csv')
 generatorData_path = os.path.join(script_dir, '../data/GeneratorData.csv')
@@ -85,12 +97,12 @@ bid_offers_path = os.path.join(script_dir, '../data/bid_offers.csv')
 system_demand_path = os.path.join(script_dir, '../data/system_demand.csv')
 demand_per_load_path = os.path.join(script_dir, '../data/demand_per_load.csv')
 
-# Wind farm data
+# WIND FARM CAPACITY FACTORS
 wind_farm_capacity = 200
 wind_CF = pd.read_csv(wind_cf_path)['wind_cf'].tolist()
 wind_CF = [cf * wind_farm_capacity for cf in wind_CF]
 
-# Load generator data
+# GENERATORS
 dtype_dict = {
     'Node': int,'Pmax (MW)': object, 'Pmin (MW)': float, 'R+ (MW)': float, 'R- (MW)': float,
     'RU (MW/h)': float, 'RD (MW/h)': float, 'UT (h)': int, 'DT (h)': int
@@ -105,22 +117,22 @@ for index, row in generators.iterrows():
 
 generators = generators.to_dict(orient='records') # Convert to list of dictionaries
 
-# Load generator bid offers
+# GENERATORS BID OFFERS
 bid_offers = pd.read_csv(bid_offers_path)
 bid_offers = pd.Series(bid_offers.Bid.values, index=bid_offers.Unit).to_dict()
 
-# Load generator's up and down reserve offers
+# RESERVE BID OFFERS
 bid_reserve_up = pd.read_csv(bid_offers_path)
 bid_reserve_up = pd.Series(bid_reserve_up.up_reserve.values, index=bid_reserve_up.Unit).to_dict()
 
 bid_reserve_down = pd.read_csv(bid_offers_path)
 bid_reserve_down = pd.Series(bid_reserve_down.down_reserve.values, index=bid_reserve_down.Unit).to_dict()
 
-# Load System demand values in MW for each hour
+# SYSTEM DEMAND
 system_demand = pd.read_csv(system_demand_path)
 system_demand = system_demand['Demand'].tolist()
 
-# Load demand per load
+# DEMAND PER LOAD
 demand_per_load = pd.read_csv(demand_per_load_path)
 demand_per_load = {(int(row['Load'])): row['Demand'] for index, row in demand_per_load.iterrows()}
 
