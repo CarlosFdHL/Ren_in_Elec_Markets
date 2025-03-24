@@ -62,6 +62,7 @@ def sensitivity_analysis():
     # --- Plot Results ---
     plot_atc_results(atc_values, atc_zonal_prices, atc_social_welfare)
     plot_capacity_results(capacity_labels, cap_zonal_prices, cap_social_welfare, hourly_prices)
+    plt.show()
 
 def plot_atc_results(atc_values, zonal_prices, social_welfare):
     """Plot ATC sensitivity results"""
@@ -86,13 +87,13 @@ def plot_atc_results(atc_values, zonal_prices, social_welfare):
     plt.grid(True)
     
     plt.tight_layout()
-    plt.show()
+    
 
 def plot_capacity_results(labels, zonal_prices, social_welfare, hourly_prices):
     """Plot capacity sensitivity results with custom markers for hourly prices"""
     
     # --- Hourly Price Curves with Custom Markers ---
-    plt.figure(figsize=(12, 5))
+    plt.figure(figsize=(15, 5))
     
     # Define custom markers and colors for each scenario
     scenario_styles = {
@@ -113,17 +114,17 @@ def plot_capacity_results(labels, zonal_prices, social_welfare, hourly_prices):
                     color=style["color"],
                     markersize=6,
                     markevery=2,  # Show markers every 2 points to avoid clutter
-                    label=scenario)
+                    label=scenario,)
         
         plt.xlabel("Hour")
         plt.ylabel("Price ($/MWh)")
         plt.title(f"{zone} Hourly Prices")
         plt.grid(True, alpha=0.3)
-        plt.legend()
+        plt.legend(loc="upper left")
         plt.xticks(range(1, 25, 3))
     
     plt.tight_layout()
-    plt.show()
+    
     
     # --- Keep the original bar charts (unchanged) ---
     plt.figure(figsize=(12, 5))
