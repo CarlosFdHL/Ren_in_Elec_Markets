@@ -32,7 +32,7 @@ class InputDataDayAhead:
         self.demand_bid_price = [] 
         self.demand_per_load = demand_per_load
         self.curtailment_cost = 500
-        self.regulation_pricing = 'one price' # 'one price' or 'two price'
+        self.regulation_pricing = 'two price' # 'one price' or 'two price'
 
         # Adjust demand to the time span
         num_hours = len(self.timeSpan)

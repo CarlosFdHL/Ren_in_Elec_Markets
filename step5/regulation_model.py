@@ -72,6 +72,17 @@ class RegulationModel:
             for t in self.data_da.data.timeSpan
         }
 
+        self.constraints.curtailment_max = {
+            (d, t): self.model.addConstr(
+                self.variables.demand_curtailment[d, t],
+                GRB.LESS_EQUAL,
+                self.data_da.results.covered_demand[d, t],
+                name=f"CurtailmentMax_{d}_{t}"
+            )
+            for d in self.data_da.data.loads
+            for t in self.data_da.data.timeSpan
+        }
+
         # Balance constraint. Dual variable is the balance price
         self.constraints.sum_equal_balance = {
             t: self.model.addConstr(
@@ -146,26 +157,24 @@ class RegulationModel:
                 self.results.variation.at[t, g] = self.data_regulation.variation[g, t]
                 up_reg = self.variables.upward_regulation[g, t].X
                 down_reg = self.variables.downward_regulation[g, t].X
-                price = self.get_price(t, g, up_reg, down_reg)
-                self.results.regulation_profit.at[t, g] = round(price, 1)
+                self.results.regulation_profit.at[t, g] = round((up_reg - down_reg) * self.results.balance_price[t], 1)
                 self.results.profit_data.at[t, g] += self.results.regulation_profit.at[t, g]
                 self.results.upward_regulation.at[t, g] = up_reg
                 self.results.downward_regulation.at[t, g] = down_reg
 
+                if self.data_da.data.regulation_pricing.lower() == 'one price': 
+                    price = self.data_regulation.variation[g, t] * self.results.balance_price[t]
+                    self.results.profit_data.at[t, g] += price
+                elif self.data_da.data.regulation_pricing.lower() == 'two price':    
+                    if self.data_regulation.variation[g, t] > 0: # If generator produces more than scheduled
+                        price = self.data_regulation.variation[g, t] * self.data_da.results.price[t]
+                        self.results.profit_data.at[t, g] += price 
+                    elif self.data_regulation.variation[g, t] < 0: # If generator produces less than scheduled
+                        price = self.data_regulation.variation[g, t] * self.results.balance_price[t]
+                        self.results.profit_data.at[t, g] += price 
+
             for d in loads:
                 self.results.demand_curtailment.at[t, d] = self.variables.demand_curtailment[d, t].X
-
-    def get_price(self, t, g, up_reg, down_reg):
-        if (up_reg - down_reg) != 0: # The generator is helping the system 
-            if self.data_da.data.regulation_pricing.lower() == 'one price':
-                return (up_reg - down_reg) * self.results.balance_price[t]
-            elif self.data_da.data.regulation_pricing.lower() == 'two price':
-                return (up_reg - down_reg) * self.data_da.results.price[t]
-            else:
-                print("Invalid regulation pricing")
-                raise ValueError
-        else: # The generator is not helping the system
-            return self.data_regulation.variation[g, t] * self.results.balance_price[t] # Generator pays/gets paid the balancing price for the variation in production
 
 
     def print_results(self):

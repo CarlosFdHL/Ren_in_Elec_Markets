@@ -149,6 +149,12 @@ class DayAheadModel:
         self.results.profit_data = pd.DataFrame(index=self.data.timeSpan, columns=self.data.generators, dtype=float)
         self.results.utility = pd.DataFrame(index=self.data.timeSpan, columns=self.data.demand_per_load, dtype=float)
 
+        self.results.covered_demand = {
+            (d,t): self.variables.demand[d, t].X
+            for t in self.data.timeSpan
+            for d in self.data.loads
+        }
+
         self.results.sum_power = 0
         for t, constraint in self.constraints.demand_equal_production.items():
             for g in self.data.generators:
