@@ -59,14 +59,14 @@ class Step2_model:
             for t_index, t in enumerate(self.data.timeSpan):
                 if not self.data.wind[g]:
                     constraint = self.model.addConstr(
-                        self.variables.production[g, t], #* self.variables.on[g, t],
+                        self.variables.production[g, t],
                         GRB.LESS_EQUAL,
                         self.data.Pmax[g],
                         name = f"ProductionMAXLimit_{g}_{t}"
                     )
                 else:
                     constraint = self.model.addConstr(
-                        self.variables.production[g, t], #* self.variables.on[g, t], 
+                        self.variables.production[g, t], 
                         GRB.LESS_EQUAL, 
                         self.data.Pmax[g][t_index - 24 * num_days],
                         name = f"ProductionMAXLimit_{g}_{t}"
@@ -100,15 +100,7 @@ class Step2_model:
                                     name=f"SystemDemandEqualProductionHour_{t}")
             for t in self.data.timeSpan
         }
-        # self.constraints.demand_equal_production = {
-        #     t: self.model.addConstr( - (gp.quicksum(self.variables.production[g, t] for g in self.data.generators) - 
-        #                             ((self.variables.battery_charging_power[t]) -  
-        #                             self.variables.battery_discharging_power[t])),
-        #                             GRB.EQUAL, 
-        #                             - (gp.quicksum(self.variables.demand[d, t] for d in self.data.loads)), 
-        #                             name=f"SystemDemandEqualProductionHour_{t}")
-        #     for t in self.data.timeSpan
-        # }
+
 
         self.constraints.ramp_up = {
             (g, t): self.model.addConstr(self.variables.production[g, t] - self.variables.production[g, t-1],

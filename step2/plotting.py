@@ -22,7 +22,6 @@ def plotting_results(model):
     ax.set_xticks(range(1, 25))
     
 
-    print(model.results.power_charging)
     battery_charge = model.results.power_charging.values()
     battery_discharge = model.results.power_discharging.values()
     battery_discharge = [-value for value in battery_discharge]
