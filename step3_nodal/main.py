@@ -1,11 +1,11 @@
 from input_data import *
-from model import Step1_model
+from model import Step3_model
 
 
 
 def run_model(input_data):
     # Solves the model with the data provided in the input_data.py file
-    model = Step1_model(input_data)
+    model = Step3_model(input_data)
     model.run()
     model.print_results() 
 
