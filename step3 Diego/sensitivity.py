@@ -3,143 +3,71 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from input_data import InputData, generators, bid_offers, system_demand, demand_per_load, bus_reactance, bus_capacity, zone_mapping
-from main import run_model  # Ensure this returns meaningful data
+from model import Step3_zonal  # Ensure correct import of the model
 
-def modify_capacity(factor):
-    # Create a new modified version of bus reactance
-    modified_bus_capacity = {key: value * factor for key, value in bus_reactance.items()}
-    return InputData(generators, bid_offers, system_demand, demand_per_load, bus_reactance, modified_bus_capacity, zone_mapping)
+def modify_atc(value):
+    """Modify Available Transfer Capacity (ATC) and return updated input data."""
+    modified_bus_capacity = bus_capacity.copy()  # Keep bus capacity unchanged
+    return InputData(generators, bid_offers, system_demand, demand_per_load, bus_reactance, modified_bus_capacity, zone_mapping, atc=value)
+
+def run_model(input_data):
+    """Runs the zonal model and returns results."""
+    model = Step3_zonal(input_data)
+    model.run()
+    return model.results  # Return results object
 
 def sensitivity_analysis():
-    # Original input data
-    original_input_data = InputData(generators, bid_offers, system_demand, demand_per_load, bus_reactance, bus_capacity, zone_mapping)
-    
-    # Run model and store results
-    print("Running model with original capacity values...")
-    results_original = run_model(original_input_data)
+    # Define the range of ATC values to test
+    atc_values = [0, 10, 50, 100, 200, 500, 1000]
 
-    increased_capacity_data = modify_capacity(0.8)
-    print("\nRunning model with increased capacity values (+20%)...")
-    results_increased = run_model(increased_capacity_data)
+    # Storage for results
+    zonal_prices = {zone: [] for zone in ["Zone A", "Zone B"]}
+    social_welfare = []
 
-    decreased_capacity_data = modify_capacity(1.2)
-    print("\nRunning model with decreased capacity values (-20%)...")
-    results_decreased = run_model(decreased_capacity_data)
+    # Run the model for each ATC value
+    for atc in atc_values:
+        print(f"\nRunning model with ATC = {atc} MW...")
+        modified_input_data = modify_atc(atc)
+        results = run_model(modified_input_data)
 
-    
-    
-    
+        # Store zonal prices
+        for zone in ["Zone A", "Zone B"]:
+            avg_price = np.mean([results.zonal_price.get((zone, h), 0) for h in range(1, 25)])
+            zonal_prices[zone].append(avg_price)
 
-    for i in [0, 10, 50, 100, 200, 500, 1000]:
-        try:
-            affected_nodes, increased_capacity_data = modify_capacity_bus(modified_bus, i)
-            results = run_model(increased_capacity_data)
-            result_value_n = results.get((affected_nodes[0], 1), 0)
-            result_value_m = results.get((affected_nodes[1], 1), 0)
-            price_sensitivity_n.append(result_value_n)
-            price_sensitivity_m.append(result_value_m)
-        except Exception as e:
-            print(f"Error processing capacity {i}: {e}")
+        # Store social welfare
+        social_welfare.append(results.objective)
 
-    plot_zonal_prices(results_original, results_increased, results_decreased, price_sensitivity_n, price_sensitivity_m)
-def plot_zonal_prices(results_original, results_increased, results_decreased):
-    # Extract all unique buses and hours
-    zones = sorted(set(n for (n, _) in results_original.keys()))
-    hours = sorted(set(t for (_, t) in results_original.keys()))
-    
-    # Create a figure for each hour
-    for display_hour in hours:
-        # Get data for this hour
-        prices_original = [results_original.get((bus, display_hour), 0) for bus in zones]
-        prices_increased = [results_increased.get((bus, display_hour), 0) for bus in zones]
-        prices_decreased = [results_decreased.get((bus, display_hour), 0) for bus in zones]
-        
-        # Set up the plot
-        fig, ax = plt.subplots(figsize=(15, 8))
-        
-        # Set width and positions
-        bar_width = 0.25
-        index = np.arange(len(zones))
-        
-        # Create bars for each scenario
-        rects1 = ax.bar(index - bar_width, prices_original, bar_width, 
-                        label='Original', color='blue', alpha=0.7)
-        rects2 = ax.bar(index, prices_increased, bar_width, 
-                        label='Increased Capacity (+20%)', color='green', alpha=0.7)
-        rects3 = ax.bar(index + bar_width, prices_decreased, bar_width, 
-                        label='Decreased Capacity (-20%)', color='red', alpha=0.7)
-        
-        # Add labels, title and legend
-        ax.set_xlabel('Zone')
-        ax.set_ylabel('Zonal Price ($/MWh)')
-        ax.set_title(f'Zonal Price Comparison at Hour {display_hour}')
-        ax.set_xticks(index)
-        ax.set_xticklabels([f'{bus}' for bus in zones])
-        ax.legend()
-        
-        # Add grid lines for better readability
-        ax.yaxis.grid(True, linestyle='--', alpha=0.7)
-        
-        # Add value labels on top of bars
-        def add_labels(rects):
-            for rect in rects:
-                height = rect.get_height()
-                ax.annotate(f'{height:.1f}',
-                            xy=(rect.get_x() + rect.get_width() / 2, height),
-                            xytext=(0, 3),  # 3 points vertical offset
-                            textcoords="offset points",
-                            ha='center', va='bottom', rotation=90, fontsize=8)
-        
-        # Uncomment these if you want value labels (can be crowded with many nodes)
-        # add_labels(rects1)
-        # add_labels(rects2)
-        # add_labels(rects3)
-        
-        fig, ax = plt.subplots(figsize=(15, 8))
-        ax.plot([0, 10, 50, 100, 200, 500, 1000], price_sensitivity_n, marker='o', label = 'Node n')
-        ax.plot([0, 10, 50, 100, 200, 500, 1000], price_sensitivity_m, marker='o', label = 'Node m')
-        ax.set_xlabel('Capacity (MW)')
-        ax.set_ylabel('Nodal Price ($/MWh)')
-        ax.set_title(f'Nodal Price Sensitivity at Bus {(affected_nodes[0], affected_nodes[1] )} for Hour {display_hour}')
-        ax.grid(True, linestyle='--', alpha=0.7)
-        plt.tight_layout()
-       # plt.savefig(f'nodal_prices_hour_{display_hour}.png')
-        plt.show()
-'''   
-    # Create a summay plot with average prices across all hours
-    avg_original = []
-    avg_increased = []
-    avg_decreased = []
-    
-    for bus in nodes:
-        avg_original.append(np.mean([results_original.get((bus, h), 0) for h in hours]))
-        avg_increased.append(np.mean([results_increased.get((bus, h), 0) for h in hours]))
-        avg_decreased.append(np.mean([results_decreased.get((bus, h), 0) for h in hours]))
-    
-    # Set up the summary plot
-    fig, ax = plt.subplots(figsize=(15, 8))
-    
-    # Create bars for each scenario
-    rects1 = ax.bar(index - bar_width, avg_original, bar_width, 
-                    label='Original', color='blue', alpha=0.7)
-    rects2 = ax.bar(index, avg_increased, bar_width, 
-                    label='Increased Capacity (+20%)', color='green', alpha=0.7)
-    rects3 = ax.bar(index + bar_width, avg_decreased, bar_width, 
-                    label='Decreased Capacity (-20%)', color='red', alpha=0.7)
-    
-    # Add labels, title and legend for summary plot
-    ax.set_xlabel('Node')
-    ax.set_ylabel('Average Nodal Price ($/MWh)')
-    ax.set_title('Average Nodal Price Comparison Across All Hours')
-    ax.set_xticks(index)
-    ax.set_xticklabels([f'{bus}' for bus in nodes])
-    ax.legend()
-    
-    # Add grid lines for better readability
-    ax.yaxis.grid(True, linestyle='--', alpha=0.7)
-    
-    plt.tight_layout()
+    # Plot results
+    plot_zonal_prices(atc_values, zonal_prices)
+    plot_social_welfare(atc_values, social_welfare)
+
+def plot_zonal_prices(atc_values, zonal_prices):
+    """Plots how zonal prices change with different ATC values."""
+    plt.figure(figsize=(12, 6))
+
+    for zone, prices in zonal_prices.items():
+        plt.plot(atc_values, prices, marker="o", linestyle="-", label=f"{zone}")
+
+    plt.xlabel("Available Transfer Capacity (MW)")
+    plt.ylabel("Zonal Price ($/MWh)")
+    plt.title("Impact of ATC on Zonal Prices")
+    plt.legend()
+    plt.grid(True)
     plt.show()
-'''
+
+def plot_social_welfare(atc_values, social_welfare):
+    """Plots how social welfare changes with different ATC values."""
+    plt.figure(figsize=(8, 5))
+
+    plt.plot(atc_values, social_welfare, marker="o", linestyle="-", color="purple", label="Social Welfare")
+
+    plt.xlabel("Available Transfer Capacity (MW)")
+    plt.ylabel("Social Welfare ($)")
+    plt.title("Impact of ATC on Social Welfare")
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
 if __name__ == "__main__":
     sensitivity_analysis()

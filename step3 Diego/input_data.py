@@ -5,7 +5,8 @@ import os
 
 # The class is used to instantiate an object that is passed to the model class to build the optimization model.
 class InputData:
-    def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict, bus_reactance: dict, bus_capacity: dict,zone_mapping: dict,):   
+    def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict, 
+                 bus_reactance: dict, bus_capacity: dict, zone_mapping: dict, atc=None):   
         # Initialize dictionaries to store the technical data for each generator
         self.generators = [i for i in range(1,len(generators)+1)]
         self.timeSpan = [i for i in range(1,25)]
@@ -29,7 +30,7 @@ class InputData:
         self.bus_reactance = bus_reactance  # Store bus_reactance
         self.bus_capacity = bus_capacity  # Store bus_capacity
         self.zone_mapping = zone_mapping  # Store zone_mapping
-        self.atc = bus_capacity[3, 24] #+ bus_capacity[11, 14] + bus_capacity[11,13] + bus_capacity[12, 13] + bus_capacity[12, 23]
+        self.atc = atc if atc is not None else bus_capacity[3, 24] #+ bus_capacity[11, 14] + bus_capacity[11,13] + bus_capacity[12, 13] + bus_capacity[12, 23]
         self.demand_per_zone = {
             (zone) : 0
             for zone in self.zones
