@@ -148,7 +148,7 @@ def plot_capacity_results(labels, zonal_prices, social_welfare, hourly_prices):
     
     # Social Welfare Bar Chart
     plt.subplot(1, 2, 2)
-    bars = plt.bar(labels, social_welfare, color=['red', 'blue', 'green'])
+    bars = plt.bar(labels, social_welfare, color=['orange', 'blue', 'green'])
     plt.xlabel("Capacity Scenario")
     plt.ylabel("Social Welfare ($)")
     plt.title("Capacity Impact on Social Welfare")
