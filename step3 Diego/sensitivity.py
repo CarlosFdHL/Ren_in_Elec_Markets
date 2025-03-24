@@ -27,13 +27,25 @@ def sensitivity_analysis():
     results_decreased = run_model(decreased_capacity_data)
 
     
-    plot_zonal_prices(results_original, results_increased, results_decreased)
+    
+    
 
+    for i in [0, 10, 50, 100, 200, 500, 1000]:
+        try:
+            affected_nodes, increased_capacity_data = modify_capacity_bus(modified_bus, i)
+            results = run_model(increased_capacity_data)
+            result_value_n = results.get((affected_nodes[0], 1), 0)
+            result_value_m = results.get((affected_nodes[1], 1), 0)
+            price_sensitivity_n.append(result_value_n)
+            price_sensitivity_m.append(result_value_m)
+        except Exception as e:
+            print(f"Error processing capacity {i}: {e}")
+
+    plot_zonal_prices(results_original, results_increased, results_decreased, price_sensitivity_n, price_sensitivity_m)
 def plot_zonal_prices(results_original, results_increased, results_decreased):
     # Extract all unique buses and hours
     zones = sorted(set(n for (n, _) in results_original.keys()))
     hours = sorted(set(t for (_, t) in results_original.keys()))
-    
     
     # Create a figure for each hour
     for display_hour in hours:
@@ -58,6 +70,7 @@ def plot_zonal_prices(results_original, results_increased, results_decreased):
                         label='Decreased Capacity (-20%)', color='red', alpha=0.7)
         
         # Add labels, title and legend
+        ax.set_xlabel('Zone')
         ax.set_ylabel('Zonal Price ($/MWh)')
         ax.set_title(f'Zonal Price Comparison at Hour {display_hour}')
         ax.set_xticks(index)
@@ -82,11 +95,18 @@ def plot_zonal_prices(results_original, results_increased, results_decreased):
         # add_labels(rects2)
         # add_labels(rects3)
         
+        fig, ax = plt.subplots(figsize=(15, 8))
+        ax.plot([0, 10, 50, 100, 200, 500, 1000], price_sensitivity_n, marker='o', label = 'Node n')
+        ax.plot([0, 10, 50, 100, 200, 500, 1000], price_sensitivity_m, marker='o', label = 'Node m')
+        ax.set_xlabel('Capacity (MW)')
+        ax.set_ylabel('Nodal Price ($/MWh)')
+        ax.set_title(f'Nodal Price Sensitivity at Bus {(affected_nodes[0], affected_nodes[1] )} for Hour {display_hour}')
+        ax.grid(True, linestyle='--', alpha=0.7)
         plt.tight_layout()
        # plt.savefig(f'nodal_prices_hour_{display_hour}.png')
         plt.show()
 '''   
-    # Create a summary plot with average prices across all hours
+    # Create a summay plot with average prices across all hours
     avg_original = []
     avg_increased = []
     avg_decreased = []
