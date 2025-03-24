@@ -24,9 +24,9 @@ class InputData:
         self.p_initial = p_initial
         self.demand_bid_price = [] 
         self.demand_per_load = demand_per_load
-        self.max_battery_storage = 100 # MWh
-        self.max_battery_charging_power = 100 # MW
-        self.max_battery_discharging_power = 100# MW
+        self.max_battery_storage = 450 # MWh
+        self.max_battery_charging_power = 300 # MW
+        self.max_battery_discharging_power = 300# MW
         self.battery_charge_efficiency = 0.95#0.86#0.75
         self.battery_discharge_efficiency = 0.95#0.96#0.86
 

@@ -35,7 +35,9 @@ def plotting_results(model):
     ax.legend()
     ax.set_xticks(range(1, 25))
 
-def plot_generation_and_bid(input_data, hour=0):
+    plt.show()
+
+'''def plot_generation_and_bid(input_data, hour=0):
 
     # Demand Bid Curve (Descending)
     system_demand = input_data.demand[hour]
@@ -96,4 +98,4 @@ def plot_generation_and_bid(input_data, hour=0):
     plt.title(f'Generation Supply & Demand Bid Curves at Hour {hour+1}')
     plt.legend()
     plt.grid(True)
-    plt.show()
+    plt.show()'''

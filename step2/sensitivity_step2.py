@@ -66,9 +66,9 @@ if __name__ == "__main__":
 
     # Define parameter ranges to test
     battery_params = {
-        "battery_capacities": [0, 200],  # MWh
-        "charging_rates": [100, 100],  # MW (same for both scenarios)
-        "discharge_rates": [100, 100],  # MW (same for both scenarios)
+        "battery_capacities": [0, 450],  # MWh
+        "charging_rates": [100, 300],  # MW (same for both scenarios)
+        "discharge_rates": [100, 300],  # MW (same for both scenarios)
         "charge_efficiencies": [0.95],  # Same for both scenarios
         "discharge_efficiencies": [0.95],  # Same for both scenarios
     }
@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
         # Filter results for battery ON (capacity = 200)
         battery_on_df = results_df[
-            (results_df["Battery Capacity (MWh)"] == 200)
+            (results_df["Battery Capacity (MWh)"] == 450)
         ]
 
         # Plot both scenarios on the same graph with transparency
@@ -103,7 +103,7 @@ if __name__ == "__main__":
         # Plot battery ON scenario (step plot)
         plt.scatter(
             battery_on_df["Hour"], battery_on_df["Market Price ($/MWh)"],
-            color="blue", label="Battery ON (200 MWh)", alpha=0.2
+            color="blue", label="Battery ON (450 MWh)", alpha=0.2
         )
         
         plt.xlabel("Hour")

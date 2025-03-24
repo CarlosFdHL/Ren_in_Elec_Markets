@@ -1,6 +1,6 @@
 from input_data import *
 from model import Step2_model
-from plotting import plotting_results, plot_generation_and_bid
+from plotting import plotting_results #plot_generation_and_bid
 
 
 
@@ -14,6 +14,6 @@ if __name__ == "__main__":
     model.print_results()
 
     plotting_results(model)
-    plot_generation_and_bid(input_data)
+    '''plot_generation_and_bid(input_data)'''
 
     print("End of main.py")
