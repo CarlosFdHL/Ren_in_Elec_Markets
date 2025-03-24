@@ -76,7 +76,8 @@ class RegulationModel:
         self.constraints.sum_equal_balance = {
             t: self.model.addConstr(
                 gp.quicksum(self.variables.upward_regulation[g, t] for g in self.data_da.data.generators if self.data_regulation.offers_regulation[g] == True) 
-                - gp.quicksum(self.variables.downward_regulation[g, t] for g in self.data_da.data.generators if self.data_regulation.offers_regulation[g] == True),
+                - gp.quicksum(self.variables.downward_regulation[g, t] for g in self.data_da.data.generators if self.data_regulation.offers_regulation[g] == True)
+                + gp.quicksum(self.variables.demand_curtailment[d, t] for d in self.data_da.data.loads),
                 GRB.EQUAL,
                 - self.data_regulation.imbalance[t],
                 name=f"SumEqualBalance_{t}"
