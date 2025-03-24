@@ -53,8 +53,8 @@ class Step2_model:
         num_hours = len(self.data.timeSpan)
         num_days = num_hours // 24
         
+        # Production upper limits limits. Makes distinction between wind and non-wind generators
         self.constraints.production_upper_limit = {}
-
         for g in self.data.generators:
             for t_index, t in enumerate(self.data.timeSpan):
                 if not self.data.wind[g]:
@@ -73,6 +73,7 @@ class Step2_model:
                     )
                 self.constraints.production_upper_limit[g, t] = constraint
         
+        # Production lower limits
         self.constraints.production_lower_limit = {
             (g, t): self.model.addConstr(self.variables.production[g, t], 
                                          GRB.GREATER_EQUAL, 
@@ -82,6 +83,7 @@ class Step2_model:
             for t in self.data.timeSpan
         }
         
+        # Demand upper limit
         self.constraints.demand_upper_limit = {
             (d, t): self.model.addConstr(self.variables.demand[d, t],
                                         GRB.LESS_EQUAL,
@@ -91,6 +93,7 @@ class Step2_model:
             for d in self.data.loads 
         }
 
+        # System balance constraint. The dual value of the constraint is the market clearing price
         self.constraints.demand_equal_production = {
             t: self.model.addConstr( - (gp.quicksum(self.variables.production[g, t] for g in self.data.generators) - 
                                     ((self.variables.battery_charging_power[t] * self.data.battery_charge_efficiency) -  
@@ -101,7 +104,7 @@ class Step2_model:
             for t in self.data.timeSpan
         }
 
-
+        # Ramp up constraint
         self.constraints.ramp_up = {
             (g, t): self.model.addConstr(self.variables.production[g, t] - self.variables.production[g, t-1],
                                          GRB.LESS_EQUAL,
@@ -111,6 +114,7 @@ class Step2_model:
             for t in self.data.timeSpan if t > 1
         }
 
+        # Ramp up initial constraint
         self.constraints.ramp_up_initial = {
             g: self.model.addConstr(self.variables.production[g, 1] - self.data.p_initial[g],
                                     GRB.LESS_EQUAL,
@@ -119,6 +123,7 @@ class Step2_model:
             for g in self.data.generators
         }
 
+        # Ramp down constraint
         self.constraints.ramp_down = {
             (g, t): self.model.addConstr(self.variables.production[g, t-1] - self.variables.production[g, t],
                                          GRB.LESS_EQUAL,
@@ -128,6 +133,7 @@ class Step2_model:
             for t in self.data.timeSpan if t > 1
         }
 
+        # Ramp down initial constraint
         self.constraints.ramp_down_initial = {
             g: self.model.addConstr(self.data.p_initial[g] - self.variables.production[g, 1],
                                     GRB.LESS_EQUAL,
@@ -136,6 +142,11 @@ class Step2_model:
             for g in self.data.generators
         }
 
+        # -----------------------------------------
+        #       BATTERY CONSTRAINTS 
+        # -----------------------------------------
+
+        # Energy balance in the battery
         self.constraints.battery_energy_balance = {
             t: self.model.addConstr(self.variables.stored_energy[t],
                                     GRB.EQUAL,
@@ -145,12 +156,14 @@ class Step2_model:
             for t in self.data.timeSpan if t > 1
         }
 
+        # Energy balance in the battery initial
         self.constraints.battery_energy_initial = self.model.addConstr(self.variables.stored_energy[1], 
                                                                        GRB.EQUAL, 
                                                                        self.variables.battery_charging_power[1] * self.data.battery_charge_efficiency
                                                                         - self.variables.battery_discharging_power[1] /self.data.battery_discharge_efficiency, 
                                                                         name=f"StoredEnergy_1")
-                
+        
+        # Energy stored in the battery initial
         self.model.addConstr(self.variables.stored_energy[1], GRB.EQUAL, 0, name=f"StoredEnergy_1")
         
         
@@ -167,8 +180,8 @@ class Step2_model:
         for t in self.data.timeSpan:
             self.data.producers_cost += gp.quicksum(self.data.bid_offers[g] * self.variables.production[g, t] for g in self.data.generators)
         
+        # Maximize social welfare
         self.model.setObjective(self.data.demand_cost - self.data.producers_cost, GRB.MAXIMIZE)
-        #self.model.setObjective(producers_revenue, GRB.MINIMIZE)
 
     def build_model(self):
         # Creates the model and calls the functions to build the variables, constraints, and objective function

@@ -16,4 +16,5 @@ if __name__ == "__main__":
     # Default input data
     input_data = InputData(generators, bid_offers, system_demand, demand_per_load, bus_reactance, bus_capacity)
     run_model(input_data)
+    
     print("End of main.py")

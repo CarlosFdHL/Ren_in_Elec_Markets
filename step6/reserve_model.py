@@ -5,6 +5,11 @@ import matplotlib.pyplot as plt
 
 from input_data import InputData
 
+'''
+Although the model was built dependant on time, it was only meant to calculate for all the demand hours. 
+This model does not include time dependant constraints like ramp up.
+'''
+
 class Expando(object):
     '''
         A small class which can have attributes set
@@ -42,6 +47,7 @@ class ReserveModel:
         num_hours = len(self.data.timeSpan)
         num_days = num_hours // 24
 
+        # Reserve up limit
         self.constraints.reserve_up_limit = {
             (g, t): self.model.addConstr(
                 self.variables.reserve_up[g, t],
@@ -53,6 +59,7 @@ class ReserveModel:
             for t in self.data.timeSpan
         }
 
+        # Reserve down limit
         self.constraints.reserve_down_limit = {
             (g, t): self.model.addConstr(
                 self.variables.reserve_down[g, t],
@@ -63,6 +70,8 @@ class ReserveModel:
             for g in self.data.generators
             for t in self.data.timeSpan
         }
+
+        # Reserve up and down have to be less than the maximum capacity of the generator. Distinction between wind and non-wind generators
         self.constraints.reserve_limit = {}
         for g in self.data.generators:
             for t_index, t in enumerate(self.data.timeSpan):
@@ -81,6 +90,7 @@ class ReserveModel:
                         name = f"Reserve_limit_{g}_{t}"
                     )
 
+        # Reserve up has to be equal to the reserve up requirements of the system
         self.constraints.reserve_up_requirements = {
             t: self.model.addConstr(
                 gp.quicksum(self.variables.reserve_up[g, t] for g in self.data.generators),
@@ -90,7 +100,8 @@ class ReserveModel:
             )
             for t in self.data.timeSpan
         }
-
+        
+        # Reserve down has to be equal to the reserve down requirements of the system
         self.constraints.reserve_down_requirements = {
             t: self.model.addConstr(
                 gp.quicksum(self.variables.reserve_down[g, t] for g in self.data.generators),
@@ -100,7 +111,6 @@ class ReserveModel:
             )
             for t in self.data.timeSpan
         }
-
         
     def build_objective_function(self):
         # Create the objective function
@@ -108,6 +118,7 @@ class ReserveModel:
         self.data.reserve_up_cost = gp.quicksum(self.variables.reserve_up[g, t] * self.data.bid_reserve_up[g] for g in self.data.generators for t in self.data.timeSpan)
         self.data.reserve_down_cost = gp.quicksum(self.variables.reserve_down[g, t] * self.data.bid_reserve_down[g] for g in self.data.generators for t in self.data.timeSpan)
 
+        # Minimize the total reserve cost
         self.model.setObjective(self.data.reserve_up_cost + self.data.reserve_down_cost, GRB.MINIMIZE)
 
     def build_model(self):

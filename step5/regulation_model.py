@@ -27,6 +27,8 @@ class RegulationModel:
 
     def build_variables(self):
         # Create the variables
+
+        # Upward and downward regulation variables
         self.variables.upward_regulation = {
             (g, t): self.model.addVar(lb = 0, name=f"UpwardRegulation_{g}_{t}")
             for g in self.data_da.data.generators 
@@ -37,6 +39,8 @@ class RegulationModel:
             for g in self.data_da.data.generators 
             for t in self.data_da.data.timeSpan
         }
+
+        # Demand curtailment variables
         self.variables.demand_curtailment = {
             (d, t): self.model.addVar(lb = 0, name=f"DemandCurtailment_{d}_{t}")
             for t in self.data_da.data.timeSpan
@@ -45,7 +49,7 @@ class RegulationModel:
           
     def build_constraints(self):
         # Create the constraints
-
+        # Upward and downward regulation limits based on day ahead market results
         self.constraints.upward_regulation_max = {
             (g, t): self.model.addConstr(
                 self.variables.upward_regulation[g, t],
@@ -68,6 +72,7 @@ class RegulationModel:
             for t in self.data_da.data.timeSpan
         }
 
+        # Balance constraint. Dual variable is the balance price
         self.constraints.sum_equal_balance = {
             t: self.model.addConstr(
                 gp.quicksum(self.variables.upward_regulation[g, t] for g in self.data_da.data.generators if self.data_regulation.offers_regulation[g] == True) 
@@ -89,6 +94,7 @@ class RegulationModel:
         self.data_regulation.curtailment_cost = gp.quicksum(self.data_da.data.curtailment_cost * self.variables.demand_curtailment[d, t]
                                                 for d in self.data_da.data.loads for t in self.data_da.data.timeSpan)
         
+        # Minimum cost objective function
         self.model.setObjective(self.data_regulation.upward_cost 
                                 + self.data_regulation.downward_cost 
                                 + self.data_regulation.curtailment_cost, 

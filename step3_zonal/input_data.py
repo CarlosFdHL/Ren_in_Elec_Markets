@@ -11,7 +11,7 @@ class InputData:
         
         # SETS
         self.generators = [i for i in range(1,len(generators)+1)]
-        self.timeSpan = [i for i in range(1,25)]
+        self.timeSpan = [i for i in range(1,2)]
         self.loads = [i for i in range(1,len(demand_per_load)+1)]
         self.nodes = [i for i in range(1,25)]
         self.zones = ["Zone A", "Zone B"] #2 zones

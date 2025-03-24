@@ -5,13 +5,18 @@ import numpy as np
 
 from input_data import InputData
 
+'''
+Although the model was built dependant on time, it was only meant to calculate for all the demand hours. 
+This model does not include time dependant constraints like ramp up.
+'''
+
 class Expando(object):
     '''
         A small class which can have attributes set
     '''
     pass
 
-class Step1_model:
+class Step3_model:
     # Step1_model is a class that represents the optimization model. It receives an instance of the InputData class to build the optimization model and solve it.
 
     def __init__(self, input_data: InputData):
@@ -36,25 +41,20 @@ class Step1_model:
             for t in self.data.timeSpan
             for d in self.data.loads
         }
-
+        # Variables for the phase angle
         self.variables.angle = {
             (n, t) : self.model.addVar(lb = - np.pi, ub = np.pi, name=f"Angle_{n}")
             for n in self.data.nodes
             for t in self.data.timeSpan
         }
-        # self.variables.bus_power_flow = {
-        #     (n, m, t): self.model.addVar(lb = -self.data.bus_capacity[n,m], ub = self.data.bus_capacity[n,m], name=f"BusPowerFlow_{n}_{m}_{t}")
-        #     for (n, m) in self.data.bus_capacity.keys()
-        #     for t in self.data.timeSpan
-        # }
         
     def build_constraints(self):
         # Create the constraints
         num_hours = len(self.data.timeSpan)
         num_days = num_hours // 24
         
+        # Production upper limits limits. Makes distinction between wind and non-wind generators    
         self.constraints.production_upper_limit = {}
-
         for g in self.data.generators:
             for t_index, t in enumerate(self.data.timeSpan):
                 if not self.data.wind[g]:
@@ -73,6 +73,7 @@ class Step1_model:
                     )
                 self.constraints.production_upper_limit[g, t] = constraint
         
+        # Production lower limits
         self.constraints.production_lower_limit = {
             (g, t): self.model.addConstr(self.variables.production[g, t], 
                                          GRB.GREATER_EQUAL, 
@@ -82,6 +83,7 @@ class Step1_model:
             for t in self.data.timeSpan
         }
         
+        # Demand upper limit
         self.constraints.demand_upper_limit = {
             (d, t): self.model.addConstr(self.variables.demand[d, t],
                                         GRB.LESS_EQUAL,
@@ -107,8 +109,7 @@ class Step1_model:
                         gp.quicksum((1/self.data.bus_reactance[m, n_]) * (self.variables.angle[n_, t] - self.variables.angle[m, t])
                                     for (m, n_) in self.data.bus_capacity.keys() 
                                     if n_ == n)
-                print(f"Flujo neto en nodo {n} en tiempo {t}: {net_flow}")
-                print("-----------------")
+
                 # Demand at node n for time t, ensure loads are linked correctly
                 demand_at_node = gp.quicksum(self.variables.demand[d, t]
                                             for (d, load_n) in self.data.demand_per_load.keys()
@@ -122,6 +123,7 @@ class Step1_model:
                     name=f"BusBalance_n{n}_t{t}"
                 )
         
+        # Max bus capacity constraint
         self.constraints.max_bus_capacity = {
             (n, m, t): self.model.addConstr(
                 1/ self.data.bus_reactance[n, m] * (self.variables.angle[n, t] - self.variables.angle[m, t]),
@@ -133,6 +135,7 @@ class Step1_model:
             for t in self.data.timeSpan
         }
 
+        # Min bus capacity constraint
         self.constraints.min_bus_capacity = {
             (n, m, t): self.model.addConstr(
                 1/ self.data.bus_reactance[n, m] * (self.variables.angle[n, t] - self.variables.angle[m, t]),
@@ -143,6 +146,7 @@ class Step1_model:
             for t in self.data.timeSpan
         }
 
+        # Reference angle constraint
         self.constraints.ref_angle = {
             t: self.model.addConstr(self.variables.angle[1, t], GRB.EQUAL, 0, name=f"Angle1_{t}")
             for t in self.data.timeSpan
@@ -162,8 +166,8 @@ class Step1_model:
         for t in self.data.timeSpan:
             self.data.producers_cost += gp.quicksum(self.data.bid_offers[g] * self.variables.production[g, t] for g in self.data.generators)
         
+        # Objective function: maximize social welfare
         self.model.setObjective(self.data.demand_cost - self.data.producers_cost, GRB.MAXIMIZE)
-        #self.model.setObjective(producers_revenue, GRB.MINIMIZE)
 
     def build_model(self):
         # Creates the model and calls the functions to build the variables, constraints, and objective function

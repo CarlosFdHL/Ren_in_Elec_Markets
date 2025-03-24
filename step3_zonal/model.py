@@ -4,6 +4,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from input_data import InputData
 
+'''
+Although the model was built dependant on time, it was only meant to calculate for all the demand hours. 
+This model does not include time dependant constraints like ramp up.
+'''
+
 class Expando(object):
     '''
         A small class which can have attributes set
@@ -37,7 +42,8 @@ class Step3_zonal:
             for t in self.data.timeSpan
             for d in self.data.loads
         }
-       
+        
+        # Create the flow variables
         self.variables.flow = {
             (a, b, t) : self.model.addVar(lb =-self.data.atc , ub =self.data.atc, name=f"flow_{a}_{b}_{t}")
             for t in self.data.timeSpan   
@@ -51,6 +57,7 @@ class Step3_zonal:
         num_hours = len(self.data.timeSpan)
         num_days = num_hours // 24
         
+        # Production upper limits limits. Makes distinction between wind and non-wind generators
         self.constraints.production_upper_limit = {}
         for g in self.data.generators:
             for t_index, t in enumerate(self.data.timeSpan):
@@ -70,6 +77,7 @@ class Step3_zonal:
                     )
                 self.constraints.production_upper_limit[g, t] = constraint
         
+        # Production lower limits
         self.constraints.production_lower_limit = {
             (g, t): self.model.addConstr(self.variables.production[g, t], 
                                          GRB.GREATER_EQUAL, 
@@ -79,6 +87,7 @@ class Step3_zonal:
             for t in self.data.timeSpan
         }
         
+        # Demand upper limit
         self.constraints.demand_upper_limit = {
             (d, t): self.model.addConstr(self.variables.demand[d, t],
                                         GRB.LESS_EQUAL,
@@ -88,6 +97,7 @@ class Step3_zonal:
             for (d, n) in self.data.demand_per_load.keys()
         }
 
+        # Zonal balance constraint. Dual variable is the zonal price
         self.constraints.demand_equal_production = { 
             (a, t): self.model.addConstr(
                 gp.quicksum(self.variables.demand[d, t] 
@@ -103,6 +113,7 @@ class Step3_zonal:
             for t in self.data.timeSpan
         }
 
+        # Flow limits between zones
         self.constraints.flow_limits = {
             (a, b, t): self.model.addConstr(
                 self.variables.flow[a, b, t],
@@ -126,8 +137,8 @@ class Step3_zonal:
         for t in self.data.timeSpan:
             self.data.producers_cost += gp.quicksum(self.data.bid_offers[g] * self.variables.production[g, t] for g in self.data.generators)
         
+        # Maximize the social welfare of the system
         self.model.setObjective(self.data.demand_cost - self.data.producers_cost, GRB.MAXIMIZE)
-        #self.model.setObjective(producers_revenue, GRB.MINIMIZE)
 
     def build_model(self):
         # Creates the model and calls the functions to build the variables, constraints, and objective function

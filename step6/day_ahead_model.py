@@ -4,7 +4,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from input_data import InputData
-
+'''
+Although the model was built dependant on time, it was only meant to calculate for all the demand hours. 
+This model does not include time dependant constraints like ramp up.
+'''
 class Expando(object):
     '''
         A small class which can have attributes set
@@ -43,8 +46,8 @@ class Step6_model:
         num_hours = len(self.data.timeSpan)
         num_days = num_hours // 24
         
+        # Production upper limits limits. Makes distinction between wind and non-wind generators    
         self.constraints.production_upper_limit = {}
-
         for g in self.data.generators:
             for t_index, t in enumerate(self.data.timeSpan):
                 if not self.data.wind[g]:
@@ -63,6 +66,7 @@ class Step6_model:
                     )
                 self.constraints.production_upper_limit[g, t] = constraint
         
+        # Production lower limits
         self.constraints.production_lower_limit = {
             (g, t): self.model.addConstr(self.variables.production[g, t], 
                                          GRB.GREATER_EQUAL, 
@@ -72,6 +76,7 @@ class Step6_model:
             for t in self.data.timeSpan
         }
         
+        # Demand upper limit
         self.constraints.demand_upper_limit = {
             (d, t): self.model.addConstr(self.variables.demand[d, t],
                                         GRB.LESS_EQUAL,
@@ -81,6 +86,7 @@ class Step6_model:
             for d in self.data.loads
         }
 
+        # System demand equal production. Dual variable is the market clearing price
         self.constraints.demand_equal_production = {
             t:  self.model.addConstr( - gp.quicksum(self.variables.production[g, t] for g in self.data.generators), 
                                     GRB.EQUAL, 
@@ -102,8 +108,8 @@ class Step6_model:
         for t in self.data.timeSpan:
             self.data.producers_cost += gp.quicksum(self.data.bid_offers[g] * self.variables.production[g, t] for g in self.data.generators)
         
+        # Objective function: maximize social welfare
         self.model.setObjective(self.data.demand_cost - self.data.producers_cost, GRB.MAXIMIZE)
-        #self.model.setObjective(producers_revenue, GRB.MINIMIZE)
 
     def build_model(self):
         # Creates the model and calls the functions to build the variables, constraints, and objective function

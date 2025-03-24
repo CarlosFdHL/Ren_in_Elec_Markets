@@ -5,6 +5,10 @@ import matplotlib.pyplot as plt
 
 from input_data_day_ahead import InputDataDayAhead
 
+'''
+Although the model was built dependant on time, it was only meant to calculate for all the demand hours. 
+This model does not include time dependant constraints like ramp up.
+'''
 class Expando(object):
     '''
         A small class which can have attributes set
@@ -36,20 +40,14 @@ class DayAheadModel:
             for t in self.data.timeSpan
             for d in self.data.loads
         }
-        """
-        self.variables.on = {
-            (g, t): self.model.addVar(vtype=GRB.BINARY, name=f"on_{g}_{t}")
-            for g in self.data.generators
-            for t in self.data.timeSpan
-        }
-          """          
+       
     def build_constraints(self):
         # Create the constraints
         num_hours = len(self.data.timeSpan)
         num_days = num_hours // 24
         
+        # Production upper limits limits. Makes distinction between wind and non-wind generators
         self.constraints.production_upper_limit = {}
-
         for g in self.data.generators:
             for t_index, t in enumerate(self.data.timeSpan):
                 if not self.data.wind[g]:
@@ -68,6 +66,7 @@ class DayAheadModel:
                     )
                 self.constraints.production_upper_limit[g, t] = constraint
         
+        # Production lower limits
         self.constraints.production_lower_limit = {
             (g, t): self.model.addConstr(self.variables.production[g, t], 
                                          GRB.GREATER_EQUAL, 
@@ -77,6 +76,7 @@ class DayAheadModel:
             for t in self.data.timeSpan
         }
         
+        # Demand upper limit
         self.constraints.demand_upper_limit = {
             (d, t): self.model.addConstr(self.variables.demand[d, t],
                                         GRB.LESS_EQUAL,
@@ -86,6 +86,7 @@ class DayAheadModel:
             for d in self.data.loads
         }
 
+        # System balance constraint. Dual variable is the market clearing price
         self.constraints.demand_equal_production = {
             t:  self.model.addConstr( - gp.quicksum(self.variables.production[g, t] for g in self.data.generators), 
                                     GRB.EQUAL, 
@@ -107,6 +108,7 @@ class DayAheadModel:
         for t in self.data.timeSpan:
             self.data.producers_cost += gp.quicksum(self.data.bid_offers[g] * self.variables.production[g, t] for g in self.data.generators)
         
+        # Objective function. Maximizes social welfare
         self.model.setObjective(self.data.demand_cost - self.data.producers_cost, GRB.MAXIMIZE)
 
     def build_model(self):
