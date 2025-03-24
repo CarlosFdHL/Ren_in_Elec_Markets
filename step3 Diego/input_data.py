@@ -29,7 +29,7 @@ class InputData:
         self.bus_reactance = bus_reactance  # Store bus_reactance
         self.bus_capacity = bus_capacity  # Store bus_capacity
         self.zone_mapping = zone_mapping  # Store zone_mapping
-        self.atc = bus_capacity[3, 24] + bus_capacity[11, 14] + bus_capacity[11,13] + bus_capacity[12, 13] + bus_capacity[12, 23]
+        self.atc = bus_capacity[3, 24] #+ bus_capacity[11, 14] + bus_capacity[11,13] + bus_capacity[12, 13] + bus_capacity[12, 23]
         self.demand_per_zone = {
             (zone) : 0
             for zone in self.zones

@@ -3,6 +3,8 @@ from day_ahead_model import Step6_model
 from reserve_model import *
 from plotting import plotting_results
 from plotting import plot_generation_and_bid as plotting_bid
+from plotting import plot_reserve_allocation
+
 
 
 
@@ -23,5 +25,8 @@ if __name__ == "__main__":
     plotting_results(model)
     
     plotting_bid(input_data)
+
+    plot_reserve_allocation(reserve_model)
+
 
     print("End of main.py")

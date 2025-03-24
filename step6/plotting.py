@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import reserve_model as rm
 
 # Plotting parameters: 
 plt.rcParams['font.family'] = 'serif' 
@@ -14,6 +15,46 @@ def plotting_results(model):
     plt.title("Market clearing price for each hour")
 
     plt.show()
+
+def plot_reserve_allocation(rm):
+    # Plotting the reserve allocation over time
+    time = rm.data.timeSpan
+    generators = rm.data.generators
+    
+    reserve_up_total = []
+    reserve_down_total = []
+    for t in time:
+        up = sum(rm.results.reserve_up[g, t] for g in generators)
+        down = sum(rm.results.reserve_down[g, t] for g in generators)
+        reserve_up_total.append(up)
+        reserve_down_total.append(down)
+    
+    plt.figure(figsize=(10, 6))
+    plt.plot(time, reserve_up_total, label='Upward Reserve', marker='o', color='blue')
+    plt.plot(time, reserve_down_total, label='Downward Reserve', marker='o', color='green')
+    plt.xlabel("Hour")
+    plt.ylabel("Reserve (MW)")
+    plt.title("Upward and Downward Reserve Allocation Over Time")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+    # Plotting the reserve prices over time
+    reserve_up_prices = [rm.results.reserve_up_cost[t] for t in time]
+    reserve_down_prices = [rm.results.reserve_down_cost[t] for t in time]
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(time, reserve_up_prices, label='Upward Reserve Price ($/MW)', marker='s', color='darkblue')
+    plt.plot(time, reserve_down_prices, label='Downward Reserve Price ($/MW)', marker='s', color='darkgreen')
+    plt.xlabel("Hour")
+    plt.ylabel("Price ($/MW)")
+    plt.title("Reserve Market Prices Over Time")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
 
 def plot_generation_and_bid(input_data, hour=0):
 

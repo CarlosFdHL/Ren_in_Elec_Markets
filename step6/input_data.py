@@ -8,7 +8,7 @@ class InputData:
     def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict, bid_reserve_up: dict, bid_reserve_down: dict):  
         # Initialize dictionaries to store the technical data for each generator
         self.generators = [i for i in range(1,len(generators)+1)]
-        self.timeSpan = [i for i in range(1,2)]
+        self.timeSpan = [i for i in range(1,25)]
         self.loads = [i for i in range(1,len(demand_per_load)+1)]
         self.Pmax = {}
         self.Pmin = {}

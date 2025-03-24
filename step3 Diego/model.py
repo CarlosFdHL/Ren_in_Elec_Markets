@@ -285,8 +285,10 @@ class Step3_zonal:
         df_plot = df_prices.pivot(index="Time", columns="Zone", values="Price")
 
         plt.figure(figsize=(10, 6))
-        for zone in df_plot.columns:
-            plt.plot(df_plot.index, df_plot[zone], marker='o', label=zone)
+        plt.plot(df_plot.index, df_plot["Zone A"], marker='o', color='blue', label='Zone A')
+        plt.plot(df_plot.index, df_plot["Zone B"], marker='o', color='green', label='Zone B')
+        #for zone in df_plot.columns:
+        #    plt.plot(df_plot.index, df_plot[zone], marker='o', label=zone)
 
         plt.title("Market Clearing Price by Zone over Time")
         plt.xlabel("Hour")
