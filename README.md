@@ -64,8 +64,16 @@ optimizationMPS_project-main/
 ```
 pip install -r requirements.txt
 ``` 
+The data used for the project is in data folder. 
+In each step folder:
+ - main.py is the main file used to run a model for each step.
+ - Constrains are defined in the model.py file.
+ - Input_data uses the data from data folder and also uses additional data required for the step. 
+ - If there is a plotting.py file, the plotting functions for the step are defined there.
 
 ## Step 1
+In this step we do the analysis of the market for one hour. We determined the market-clearing-price, social welfere, profit for each producer and utility of each demand.
+
 **How to run:**
 ```
 cd step1/
@@ -73,6 +81,7 @@ python main.py
 ```
 
 ## Step 2
+In this step we do the same analysis as in step 1 but for multiple hours. We also added a battery tp the system to see how it can help balance it. 
 **How to run:**
 ```
 cd step2/
@@ -83,7 +92,9 @@ python main.py
 cd step2/
 python sensitivity.py
 ```
+Step 3 is focusing on the comparison between nodal and zonal frameworks.
 ## Step 3 Nodal
+In this step network constrains are introduced to find nodal market-clearing prices.
 **How to run:**
 ```
 cd step3_nodal/
@@ -95,6 +106,7 @@ cd step3_nodal/
 python sensitivity.py
 ```
 ## Step 3 Zonal
+In this step network constrains are introduced to find zonal prices. The number of zones and the nodes that are in each zones can be changed in input_data.py.
 **How to run main:**
 ```
 cd step3_zonal/
@@ -106,17 +118,19 @@ cd step3_zonal/
 python sensitivity.py
 ```
 ## Step 5
+In this step we are focusing on analysis how balancing market works. We compare one and two-prices scheme.
 **How to run:**
 ```
 cd step5/
 python main.py
 ```
-**Change from one and two price scheme**
+**Choose one or two price scheme**
 
 Change variable self.regulation_pricing on line 35 of the file input_data_day_ahead.py.
 
 
 ## Step 6
+In step 6 we focus on reserve market.
 **How to run:**
 ```
 cd step6/
