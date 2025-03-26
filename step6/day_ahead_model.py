@@ -58,8 +58,8 @@ class Step6_model:
                         name = f"ProductionMAXLimit_{g}_{t}"
                     )
                 else:
-                    constraint = self.model.addConstr(
-                        self.variables.production[g, t], #* self.variables.on[g, t], 
+                    constraint = self.model.addConstr( # Wind generators dont participate in the reserve market
+                        self.variables.production[g, t],
                         GRB.LESS_EQUAL, 
                         self.data.Pmax[g][t_index - 24 * num_days],
                         name = f"ProductionMAXLimit_{g}_{t}"
