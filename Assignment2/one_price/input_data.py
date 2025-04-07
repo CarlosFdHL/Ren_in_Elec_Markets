@@ -79,10 +79,15 @@ class InputData:
 
 T = [i for i in range(1,25)]
 W = [i for i in range(1,11*22*10+1)]
-print(T)
+
 # --------------------------------------------------------------------------------
-#       LOAD DATA FROM FILES
+#       LOAD DATA FROM FILES AND CREATE SCENARIOS
 # --------------------------------------------------------------------------------
+
+# Helper function to load files
+def load_files(directory):
+    """Loads all files from a given directory."""
+    return glob.glob(os.path.join(directory, '*'))
 
 # PATHS
 script_dir = os.path.dirname(__file__)
@@ -91,19 +96,16 @@ data_dir = os.path.join(script_dir, '../data')
 # Define paths for different scenarios
 path_rp_29_march = os.path.join(data_dir, 'rate_of_production_scenarios/29march')
 path_rp_30_march = os.path.join(data_dir, 'rate_of_production_scenarios/30march')
-path_eprice = os.path.join(data_dir, 'eprice_scenarios')
-files_eprice = os.listdir(path_eprice)
-path_system_cond = os.path.join(data_dir, 'ps_condition/ps_condition_scenarios.csv')
-
-# Helper function to load files
-def load_files(directory):
-    """Carga todos los archivos de un directorio dado"""
-    return glob.glob(os.path.join(directory, '*'))
-
-# Load files
 files_rp_29 = load_files(path_rp_29_march)
 files_rp_30 = load_files(path_rp_30_march)
 
+path_eprice = os.path.join(data_dir, 'eprice_scenarios')
+files_eprice = load_files(path_eprice)
+path_system_cond = os.path.join(data_dir, 'ps_condition/ps_condition_scenarios.csv')
+
+
+# SCENARIOS
+# Rate of production scenarios
 rp_scenarios = {}
 w_count = 1
 for file in files_rp_29:
@@ -133,25 +135,25 @@ for file in files_eprice:
     data = dict(zip(T[:], data.iloc[:,1]))
     eprice_scenarios[w_count] = data
     w_count += 1
-
 rp_keys = list(rp_scenarios.keys())
 sc_keys = list(sc_scenarios.keys())
 eprice_keys = list(eprice_scenarios.keys())
 combinations = itertools.product(rp_keys, sc_keys, eprice_keys)
 
+# Total scenarios
 scenarios = {}
-for w, (rp_index, sc_index, eprice_index) in zip(W, combinations):
-    scenarios[w] = {
-        'rp': rp_scenarios[rp_index],
-        'sc': sc_scenarios[sc_index],
-        'eprice': eprice_scenarios[eprice_index]
-    }
+# for w, (rp_index, sc_index, eprice_index) in zip(W, combinations):
+#     scenarios[w] = {
+#         'rp': rp_scenarios[rp_index],
+#         'sc': sc_scenarios[sc_index],
+#         'eprice': eprice_scenarios[eprice_index]
+#     }
 
 # List of all combinations
 all_combinations = list(itertools.product(rp_keys, sc_keys, eprice_keys))
 
 # Randomly sample num_samples combinations from all_combinations
-num_samples = 2420  # el número total que mencionaste
+num_samples = 2420  # Adjust this number as needed
 sampled_combinations = random.sample(all_combinations, num_samples)
 
 # Obtain a random set of num_samples scenarios
