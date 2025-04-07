@@ -4,79 +4,24 @@ import os
 import glob
 import itertools
 import random
+random.seed(5)
 
 class InputData:
-    def __init__(self, generators: list, bid_offers: dict, demand: list, demand_per_load: dict):  
-        # Initialize dictionaries to store data
+    def __init__(self, T:list, W:list, scenario:dict, prob_scenario:float):  
+        # SETS
+        self.T = T
+        self.W = W
 
-        # SETS 
-        self.generators = [i for i in range(1,len(generators)+1)]
-        self.timeSpan = [i for i in range(1,2)]
-        self.loads = [i for i in range(1,len(demand_per_load)+1)]
-
-        # GENERATOR DATA
-        self.Pmax = {}
-        self.Pmin = {}
-        self.Max_up_reserve = {}
-        self.Max_down_reserve = {}
-        self.UT = {}
-        self.DT = {}
-        self.RU = {}
-        self.RD = {}
-        self.wind = {}
-
-        # BID OFFERS
-        self.bid_offers = bid_offers
-        self.demand = demand
-        self.demand_bid_price = [] 
-        self.demand_per_load = demand_per_load
-
-        # Adjust demand to the time span
-        num_hours = len(self.timeSpan)
-        num_days = num_hours // 24
-        if num_hours <= 24:
-            factor = 24 / num_hours
-            adjusted_demand = [self.demand[int(i * factor)] for i in range(num_hours)]
-        else:
-            adjusted_demand = [self.demand[i % 24] for i in range(num_hours)]
-        self.demand = adjusted_demand
-
-        # Populate the dictionaries with data from the generators input
-        for gen in generators:
-            unit_id = gen['Unit #']
-            self.Pmax[unit_id] = gen['Pmax (MW)']
-            self.Pmin[unit_id] = gen['Pmin (MW)']
-            self.Max_up_reserve[unit_id] = gen['R+ (MW)']
-            self.Max_down_reserve[unit_id] = gen['R- (MW)']
-            self.UT[unit_id] = gen['UT (h)']
-            self.DT[unit_id] = gen['DT (h)']
-            self.RU[unit_id] = gen['RU (MW/h)']
-            self.RD[unit_id] = gen['RD (MW/h)']
-            self.wind[unit_id] = gen['wind']
-        
-        # CALCULATE DEMAND BID PRICE
-        sorted_keys = sorted(bid_offers, key=lambda k: bid_offers[k])
-        sorted_power = []
-        
-        for t, _ in enumerate(self.timeSpan):
-            demand_bid_price = {}
-            for key in sorted_keys:  
-                if not self.wind[key]:
-                    sorted_power.append(self.Pmax[key])
-                else:
-                    sorted_power.append(self.Pmax[key][t - 24 * num_days])
-            accumulated_power = 0
-            for key, power in zip(sorted_keys, sorted_power):
-                accumulated_power += power
-                if accumulated_power >= self.demand[t]:
-                    last_bid_demand = self.bid_offers[key]
-                    break
-            first_bid_demand = 10 * last_bid_demand
-            exponential_increment = np.log(first_bid_demand/last_bid_demand) / (len(demand_per_load) - 1)
-            for i, (key, load) in enumerate(demand_per_load.items()):
-                demand_bid_price[key] = last_bid_demand * np.exp(exponential_increment * i)
-            self.demand_bid_price.append(demand_bid_price)
-
+        # PARAMETERS
+        self.scenario = scenario
+        self.p_nom = 500 # MW
+        self.prob_scenario = prob_scenario
+        self.positiveBalancePriceFactor = 1.25
+        self.negativeBalancePriceFactor = 0.85
+    
+# --------------------------------------------------------------------------------
+#       DEFINITION OF SETS
+# --------------------------------------------------------------------------------
 T = [i for i in range(1,25)]
 W = [i for i in range(1,11*22*10+1)]
 
@@ -110,13 +55,14 @@ rp_scenarios = {}
 w_count = 1
 for file in files_rp_29:
     data = pd.read_csv(file, sep=';')
-    data = dict(zip(T[:], data.iloc[:,2]))
+    data = dict(zip(T[:], data.iloc[:,4]))
     rp_scenarios[w_count] = data
     w_count += 1
 for file in files_rp_30:
     data = pd.read_csv(file, sep=';')
-    data = dict(zip(T[:], data.iloc[:,2]))
+    data = dict(zip(T[:], data.iloc[:,4]))
     rp_scenarios[w_count] = data
+
     w_count += 1
 
 # System condition scenarios
@@ -125,7 +71,7 @@ system_condition_scenarios = pd.read_csv(path_system_cond, sep=',')
 num_rows = system_condition_scenarios.shape[0]
 
 for i in range(num_rows):
-    sc_scenarios[i+1] = system_condition_scenarios.loc[i].to_list()
+    sc_scenarios[i+1] = {j+1: int(system_condition_scenarios.iloc[i, j]) for j in range(system_condition_scenarios.shape[1])}
 
 # Electricity price scenarios
 w_count = 1
@@ -163,3 +109,5 @@ scenarios = {i+1: {
     'eprice': eprice_scenarios[eprice_index]
 } for i, (rp_index, sc_index, eprice_index) in enumerate(sampled_combinations)}
 
+prob_scenario = 1/len(scenarios)  # Probability of each scenario
+# --------------------------------------------------------------------------------

@@ -13,33 +13,72 @@ class OnePriceBiddingModel():
     
     def __init__(self, input_data: InputData):
         # Initialize model attributes
-        self.model = gp.Model("OnePriceBiddingModel")
+        self.data = input_data
         self.variables = Expando()
         self.constraints = Expando()
         self.results = Expando()
+        self.build_model()
     
     def build_variables(self):
         # Create the variables
-        power_bid_da = {
-            (g, t): self.model.addVar(lb = 0, name=f"PowerBidDA_{g}_{t}")
-            for g in self.data.generators
-            for t in self.data.timeSpan
+
+        # Bidded production
+        self.variables.production = {
+            t: self.model.addVar(lb = 0, name=f"Production_{t}")
+            for t in self.data.T
         }
-        print("*")
+
+        # Imbalance of the generator
+        self.variables.imbalance = {
+            (t,w): self.model.addVar(lb=-self.data.p_nom, ub=self.data.p_nom, name=f"Imbalance_hour{t}_scenario{w}")
+            for w in self.data.W
+            for t in self.data.T
+        }
         
     def build_constraints(self):
         # Create the constraints
-        print("*")
+
+        # PRODUCTION UPPER LIMIT
+        # The production upper limit is defined as the maximum capacity of the generator
+        self.constraints.production_upper_limit = {
+            t: self.model.addConstr(self.variables.production[t],
+                GRB.LESS_EQUAL,
+                self.data.p_nom,
+                name=f"ProductionUpperLimit_{t}"
+            )
+            for t in self.data.T
+        }
+
+        # IMABALANCE EQUALITY CONSTRAINT 
+        # The imbalance is defined as the difference between the real production and the bidded production
+        self.constraints.imbalance = {
+            (t,w): self.model.addConstr(self.variables.imbalance[t,w],
+                GRB.EQUAL,
+                self.data.scenario[w]['rp'][t] * self.data.p_nom - self.variables.production[t],
+                name=f"ImbalanceDefinition_{t}_{w}"
+            )
+            for t in self.data.T
+            for w in self.data.W
+        }
         
     def build_objective_function(self):
         # Create the objective function
-        print("*")
-        
+
+        # The objective function is defined as the profit from production and the profit from imbalance
+        self.objective = self.data.prob_scenario * gp.quicksum(self.data.scenario[w]['eprice'][t] * self.variables.production[t] + # Profit from production
+                                                          self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w] * self.data.scenario[w]['sc'][t] +        # Profit from imbalance in case of system requiring upward balance
+                                                          self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w] * (1 - self.data.scenario[w]['sc'][t])    # Profit from imbalance in case of system requiring downward balance
+                                                    for t in self.data.T
+                                                    for w in self.data.W
+                                                    ) 
+        # The objective is to maximize profit
+        self.model.setObjective(self.objective, GRB.MAXIMIZE)
+
     def build_model(self):
         # Creates the model and calls the functions to build the variables, constraints, and objective function
 
         print("\nBuilding model")
-        self.model = gp.Model(name="Investment Optimization Model")
+        self.model = gp.Model(name="OnePriceBiddingModel")
         self.model.setParam('OutputFlag', 1)
 
         print("\nBuilding variables")
@@ -57,20 +96,87 @@ class OnePriceBiddingModel():
 
     def save_results(self):
         # Saves the results of the model
-        print("*")
+        self.results.production = {
+            t: self.variables.production[t].X
+            for t in self.data.T
+        }
+        self.results.imbalance = {
+            (t,w): self.variables.imbalance[t,w].X
+            for t in self.data.T
+            for w in self.data.W
+        }
+        self.results.profit = self.model.ObjVal
+        self.results.profit_production = {
+            t: self.data.prob_scenario * gp.quicksum(self.data.scenario[w]['eprice'][t] * self.variables.production[t].X for w in self.data.W)
+            for t in self.data.T
+        }
+        self.results.profit_imbalance = {
+            t: self.data.prob_scenario * (
+                gp.quicksum(self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * self.data.scenario[w]['sc'][t] for w in self.data.W) +
+                gp.quicksum(self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * (1 - self.data.scenario[w]['sc'][t]) for w in self.data.W)
+            )
+            for t in self.data.T
+        }
+        print(self.results.profit_imbalance)
+
 
     def print_results(self):
-        print("*")
+        print('-' * 30)
+        print(f'{"Results Summary":^30}')
+        print('-' * 30)
+        
+        # Printing Production Results
+        print(f'{"Production (MW)":^30}')
+        print(f'{"Hour":^10} {"Production":^20}')
+        print('-' * 30)
+        for t in self.data.T:
+            print(f'{t:^10} {self.results.production[t]:^20.2f}')
+        print('-' * 30)
+
+        # Printing Profit from Production
+        print(f'{"Profit from Production (€)":^30}')
+        print(f'{"Hour":^10} {"Profit (€)":^20}')
+        print('-' * 30)
+        for t in self.data.T:
+            profit = self.data.scenario[1]['eprice'][t] * self.results.production[t]  # Assuming w=1 for simplicity
+            print(f'{t:^10} {profit:^20.2f}')
+        print('-' * 30)
+
+        # Printing Total Profit
+        print(f'Total Expected Profit: {self.results.profit:.2f} €')
+
+        # Printing Profit from Imbalance
+        print(f'{"Expected Profit from Imbalance (€)":^30}')
+        print(f'{"Hour":^10} {"Profit (€)":^20}')
+        print('-' * 30)
+        for t in self.data.T:
+            profit_imbalance = self.results.profit_imbalance[t].getValue()  
+            print(f'{t:^10} {profit_imbalance:^20.2f}')
+        print('-' * 30)
             
 
     def run(self):
         # Makes sure the model is solved and saves the results
-        
-        self.model.optimize()
-        if self.model.status == GRB.OPTIMAL:
-            self.save_results()
-        else:
-            raise RuntimeError(f"\nOptimization of {self.model.ModelName} was not successful")
+        try:
+            self.model.optimize()
+            self.model.write("model.lp")
+            if self.model.status == gp.GRB.INFEASIBLE:
+                print("Model is infeasible; computing IIS")
+                self.model.computeIIS()
+                self.model.write("model.ilp")  # Writes an ILP file with the irreducible inconsistent set.
+                print("IIS written to model.ilp")
+                exit()
+            elif self.model.status == gp.GRB.UNBOUNDED:
+                print("Model is unbounded")
+                exit()
+            elif self.model.status == gp.GRB.OPTIMAL:
+                print("Optimization was successful!")
+                self.save_results()     
+            else:
+                raise TimeoutError("Gurobi optimization failed")       
+        except gp.GurobiError as e:
+            print(f"Error reported: {e}")
+            
 
 
 
