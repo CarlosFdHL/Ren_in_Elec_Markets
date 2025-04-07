@@ -22,9 +22,9 @@ class InputData:
 # --------------------------------------------------------------------------------
 #       DEFINITION OF SETS
 # --------------------------------------------------------------------------------
-num_samples = 300  # Adjust this number as needed
-max_samples = 11*22*10
 T = [i for i in range(1,25)]
+num_samples = 200  # Adjust this number as needed
+max_samples = 11*22*10
 W = [i for i in range(1,num_samples+1)]
 
 # --------------------------------------------------------------------------------
@@ -101,6 +101,7 @@ scenarios = {}
 all_combinations = list(itertools.product(rp_keys, sc_keys, eprice_keys))
 
 # Randomly sample num_samples combinations from all_combinations
+
 sampled_combinations = random.sample(all_combinations, num_samples)
 
 # Obtain a random set of num_samples scenarios
