@@ -1,5 +1,6 @@
 import gurobipy as gp
 from gurobipy import GRB
+import matplotlib.pyplot as plt
 
 from .input_data import InputData
 
@@ -12,6 +13,10 @@ class Expando(object):
 class TwoPriceBiddingModel():
     
     def __init__(self, input_data: InputData):
+        print()
+        print('-' * 50)
+        print(f'{"OFFERING STRATEGY BASED ON A TWO PRICE SCHEME":^30}')
+        print('-' * 50)
         # Initialize model attributes
         self.data = input_data
         self.variables = Expando()
@@ -102,7 +107,7 @@ class TwoPriceBiddingModel():
 
         print("\nBuilding model")
         self.model = gp.Model(name="OnePriceBiddingModel")
-        self.model.setParam('OutputFlag', 1)
+        self.model.setParam('OutputFlag', 0)
 
         print("\nBuilding variables")
         self.build_variables()
@@ -143,6 +148,10 @@ class TwoPriceBiddingModel():
             )
             for t in self.data.T
         }
+        self.results.expected_real_prod = {
+            t: self.data.prob_scenario * gp.quicksum(self.data.scenario[w]['rp'][t] * self.data.p_nom for w in self.data.W)
+            for t in self.data.T
+        }
 
 
     def print_results(self):
@@ -167,9 +176,6 @@ class TwoPriceBiddingModel():
             print(f'{t:^10} {profit:^20.2f}')
         print('-' * 30)
 
-        # Printing Total Profit
-        print(f'Total Expected Profit: {self.results.profit:.2f} €')
-
         # Printing Profit from Imbalance
         print(f'{"Expected Profit from Imbalance (€)":^30}')
         print(f'{"Hour":^10} {"Profit (€)":^20}')
@@ -178,6 +184,29 @@ class TwoPriceBiddingModel():
             profit_imbalance = self.results.profit_imbalance[t].getValue()  
             print(f'{t:^10} {profit_imbalance:^20.2f}')
         print('-' * 30)
+        
+        # Printing Total Profit
+        print(f'Total Expected Profit: {self.results.profit:.2f} €')
+    
+    
+    def plot(self):
+        # Define figure 
+        fig, ax = plt.subplots(figsize = (8,6))
+
+        # Define arrays to be plotted
+        profit_imbalance_values = [self.results.profit_imbalance[t].getValue() for t in self.data.T]
+        profit_production_values = [self.results.profit_production[t].getValue() for t in self.data.T]
+        total_profit = [profit_imbalance_values[i] + profit_production_values[i] for i, _ in enumerate(profit_production_values)]
+
+        # Plot configuration
+        ax.plot(self.data.T, profit_production_values, label='Profit from production', color='blue', marker = 'x', linestyle = '--')
+        ax.plot(self.data.T, profit_imbalance_values, label='Expected profit from imbalance', color='red', marker = 'o', linestyle='-.')
+        ax.plot(self.data.T, total_profit, color = 'black', label = 'Total profit')
+        ax.set_ylabel('Profit (€)')
+        ax.set_xlabel('Time (h)')
+        ax.legend()
+        ax.grid()
+        plt.tight_layout()
             
 
     def run(self):
