@@ -4,7 +4,7 @@ import os
 import glob
 import itertools
 import random
-random.seed(5)
+random.seed(5) #5
 
 class InputData:
     def __init__(self, T:list, W:list, scenario:dict, prob_scenario:float):  
@@ -22,7 +22,9 @@ class InputData:
 # --------------------------------------------------------------------------------
 #       DEFINITION OF SETS
 # --------------------------------------------------------------------------------
-num_samples = 300  # Adjust this number as needed
+
+num_samples = 200  # Adjust this number as needed
+cv_nsamples = 1600 # Adjust this number as needed
 max_samples = 11*22*10
 T = [i for i in range(1,25)]
 W = [i for i in range(1,num_samples+1)]
@@ -88,20 +90,14 @@ sc_keys = list(sc_scenarios.keys())
 eprice_keys = list(eprice_scenarios.keys())
 combinations = itertools.product(rp_keys, sc_keys, eprice_keys)
 
-# Total scenarios
-scenarios = {}
-# for w, (rp_index, sc_index, eprice_index) in zip(W, combinations):
-#     scenarios[w] = {
-#         'rp': rp_scenarios[rp_index],
-#         'sc': sc_scenarios[sc_index],
-#         'eprice': eprice_scenarios[eprice_index]
-#     }
-
 # List of all combinations
 all_combinations = list(itertools.product(rp_keys, sc_keys, eprice_keys))
 
 # Randomly sample num_samples combinations from all_combinations
 sampled_combinations = random.sample(all_combinations, num_samples)
+
+# Randomly sample combinations for cross-validation
+cv_combinations = random.sample(all_combinations, cv_nsamples)
 
 # Obtain a random set of num_samples scenarios
 scenarios = {i+1: {
@@ -110,5 +106,27 @@ scenarios = {i+1: {
     'eprice': eprice_scenarios[eprice_index]
 } for i, (rp_index, sc_index, eprice_index) in enumerate(sampled_combinations)}
 
+# Obtain all the scenarios used for the cross validation analysis
+cv_scenarios = {i+1: {
+    'rp': rp_scenarios[rp_index],
+    'sc': sc_scenarios[sc_index],
+    'eprice': eprice_scenarios[eprice_index]
+} for i, (rp_index, sc_index, eprice_index) in enumerate(cv_combinations)}
+
 prob_scenario = 1/len(scenarios)  # Probability of each scenario
+
+# Ex-post analysis scenarios
+expost_combinations = [index for index in all_combinations if index not in sampled_combinations]
+
+#expost_combinations = random.sample(expost_combinations, 1400) # Adjust this number as needed
+
+# Crear un diccionario con los escenarios no utilizados
+expost_scenarios = {i+1: {
+    'rp': rp_scenarios[rp_index],
+    'sc': sc_scenarios[sc_index],
+    'eprice': eprice_scenarios[eprice_index]
+} for i, (rp_index, sc_index, eprice_index) in enumerate(expost_combinations)}
+
+W_expost = list(expost_scenarios.keys())
+
 # --------------------------------------------------------------------------------
