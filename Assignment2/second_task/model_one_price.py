@@ -3,269 +3,332 @@ from gurobipy import GRB
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Plotting parameters: 
-plt.rcParams['font.family'] = 'serif' 
-plt.rcParams['font.size'] = 14
+# Plotting parameters (optional, consider moving to plotting.py or main script)
+# plt.rcParams['font.family'] = 'serif'
+# plt.rcParams['font.size'] = 14
 
-from .input_data import InputData
+from input_data import InputData # Assuming input_data.py is in the same directory or Python path
 
+# A small helper class (can be kept if used for variables/constraints)
 class Expando(object):
-    '''
-        A small class which can have attributes set
-    '''
+    ''' A small class which can have attributes set '''
     pass
 
 class OnePriceBiddingModel():
-    
+
     def __init__(self, input_data: InputData, verbose: bool = True):
+        if not isinstance(input_data, InputData):
+            raise TypeError("input_data must be an instance of InputData class")
+        if not input_data.scenarios: # Check if scenarios were loaded
+             raise ValueError("InputData instance does not contain scenarios. Loading might have failed.")
+
         if verbose:
             print()
             print('-' * 50)
-            print(f'{"OFFERING STRATEGY BASED ON A ONE PRICE SCHEME":^30}')
+            print(f'{"ONE PRICE BIDDING MODEL":^50}') # Centered title
             print('-' * 50)
-        # Initialize model attributes
+
         self.data = input_data
-        self.variables = Expando()
+        self.variables = Expando() # Use Expando for vars/constraints if preferred
         self.constraints = Expando()
-        self.results = Expando()
+        self.results = {} # Initialize results as an empty dictionary
         self.verbose = verbose
+        self.model = None # Initialize model attribute
         self.build_model()
-    
+
     def build_variables(self):
-        # Create the variables
+        m = self.model # Local alias for model
 
-        # Bidded production
+        # Bidded production (hourly)
         self.variables.production = {
-            t: self.model.addVar(lb = 0, name=f"Production_{t}")
+            t: m.addVar(lb=0, ub=self.data.p_nom, name=f"Production_{t}") # Added upper bound
             for t in self.data.T
         }
 
-        # Imbalance of the generator
+        # Imbalance of the generator (hourly, per scenario)
+        # Bounds can be tightened: max possible imbalance is p_nom
         self.variables.imbalance = {
-            (t,w): self.model.addVar(lb=-self.data.p_nom, ub=self.data.p_nom, name=f"Imbalance_hour{t}_scenario{w}")
+            (t, w): m.addVar(lb=-self.data.p_nom, ub=self.data.p_nom, name=f"Imbalance_t{t}_w{w}")
             for w in self.data.W
             for t in self.data.T
         }
-        
+
     def build_constraints(self):
-        # Create the constraints
+        m = self.model # Local alias
 
-        # PRODUCTION UPPER LIMIT
-        # The production upper limit is defined as the maximum capacity of the generator
-        self.constraints.production_upper_limit = {
-            t: self.model.addConstr(self.variables.production[t],
-                GRB.LESS_EQUAL,
-                self.data.p_nom,
-                name=f"ProductionUpperLimit_{t}"
-            )
-            for t in self.data.T
-        }
+        # PRODUCTION UPPER LIMIT (already included in variable bounds, but explicit constraint is fine too)
+        # self.constraints.production_upper_limit = {
+        #     t: m.addConstr(self.variables.production[t] <= self.data.p_nom, name=f"ProdUpperLimit_{t}")
+        #     for t in self.data.T
+        # }
 
-        # IMABALANCE EQUALITY CONSTRAINT 
-        # The imbalance is defined as the difference between the real production and the bidded production
-        self.constraints.imbalance = {
-            (t,w): self.model.addConstr(self.variables.imbalance[t,w],
-                GRB.EQUAL,
-                self.data.scenario[w]['rp'][t] * self.data.p_nom - self.variables.production[t],
-                name=f"ImbalanceDefinition_{t}_{w}"
+        # IMBALANCE DEFINITION
+        # Imbalance = Real Production - Bidded Production
+        # Real Production = Rate of Production (%) * Nominal Power (kW)
+        self.constraints.imbalance_definition = {
+            (t, w): m.addConstr(
+                self.variables.imbalance[t, w] ==
+                (self.data.scenarios[w]['rp'][t] * self.data.p_nom) - self.variables.production[t],
+                name=f"ImbalanceDef_t{t}_w{w}"
             )
             for t in self.data.T
             for w in self.data.W
         }
-        
-    def build_objective_function(self):
-        # Create the objective function
 
-        # The objective function is defined as the profit from production and the profit from imbalance
-        self.objective = self.data.prob_scenario * gp.quicksum(self.data.scenario[w]['eprice'][t] * self.variables.production[t] + # Profit from production
-                                                          self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w] * self.data.scenario[w]['sc'][t] +        # Profit from imbalance in case of system requiring upward balance
-                                                          self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w] * (1 - self.data.scenario[w]['sc'][t])    # Profit from imbalance in case of system requiring downward balance
-                                                    for t in self.data.T
-                                                    for w in self.data.W
-                                                    ) 
-        # The objective is to maximize profit
-        self.model.setObjective(self.objective, GRB.MAXIMIZE)
+    def build_objective_function(self):
+        m = self.model # Local alias
+
+        # Objective: Maximize expected profit across all scenarios
+        # Profit = DA Revenue + Imbalance Revenue/Cost
+
+        # DA Revenue = DA Price * Bidded Production
+        # Imbalance Revenue/Cost depends on system condition (sc) and imbalance direction
+        # System condition sc[t] = 1 means system needs UP regulation (deficit)
+        # System condition sc[t] = 0 means system needs DOWN regulation (surplus)
+        # Imbalance > 0 (Upward) means Generator Produced MORE than bid
+        # Imbalance < 0 (Downward) means Generator Produced LESS than bid
+
+        # One-Price Scheme Logic:
+        # - If sc=1 (UP): Paid for positive imbalance, pay for negative imbalance at imbalance price (posFactor * DAprice)
+        # - If sc=0 (DOWN): Pay for positive imbalance, paid for negative imbalance at imbalance price (negFactor * DAprice)
+        # --> Simplified: Profit = DAprice*Prod + ImbPrice * Imbalance
+        #     where ImbPrice = posFactor*DAprice if sc=1, negFactor*DAprice if sc=0
+
+        self.objective = self.data.prob_scenario * gp.quicksum(
+            # DA Revenue for scenario w, time t (Price depends on scenario)
+            self.data.scenarios[w]['eprice'][t] * self.variables.production[t] +
+            # Imbalance Revenue/Cost for scenario w, time t
+            ( self.data.scenarios[w]['sc'][t] * self.data.positiveBalancePriceFactor * self.data.scenarios[w]['eprice'][t] * self.variables.imbalance[t, w] ) +
+            ( (1 - self.data.scenarios[w]['sc'][t]) * self.data.negativeBalancePriceFactor * self.data.scenarios[w]['eprice'][t] * self.variables.imbalance[t, w] )
+            for t in self.data.T
+            for w in self.data.W
+        )
+
+        m.setObjective(self.objective, GRB.MAXIMIZE)
 
     def build_model(self):
-        # Creates the model and calls the functions to build the variables, constraints, and objective function
         if self.verbose:
-            print("\nBuilding model")
-        
-        self.model = gp.Model(name="OnePriceBiddingModel")
-        self.model.setParam('OutputFlag', 0)
-        
-        if self.verbose:
-            print("\nBuilding variables")
-        self.build_variables()
+            print("\nBuilding Gurobi model...")
 
-        if self.verbose:
-            print("\nBuilding constraints")
-        self.build_constraints()
-        
-        if self.verbose:
-            print("\nBuilding objective function")
-        self.build_objective_function()
+        # Environment context manager is recommended
+        with gp.Env(empty=True) as env:
+            env.setParam('OutputFlag', 0) # Suppress Gurobi output
+            env.start()
+            # Create the model within the environment
+            self.model = gp.Model(name="OnePriceBiddingModel", env=env)
 
-        self.model.update()
-        if self.verbose:
-            print(f"Number of variables: {self.model.NumVars}")
-            print(f"Number of constraints: {self.model.NumConstrs}")
+            if self.verbose: print("Building variables...")
+            self.build_variables()
+
+            if self.verbose: print("Building constraints...")
+            self.build_constraints()
+
+            if self.verbose: print("Building objective function...")
+            self.build_objective_function()
+
+            self.model.update() # Update model structure
+            if self.verbose:
+                print(f"Model built: {self.model.NumVars} variables, {self.model.NumConstrs} constraints.")
 
     def save_results(self):
-        # Saves the results of the model
-        self.results.production = {
+        if self.model.status != GRB.OPTIMAL:
+             print("Warning: Optimization did not reach optimality. Results may be inaccurate.")
+             # Initialize results keys with NaN
+             self.results['production'] = {t: np.nan for t in self.data.T}
+             self.results['imbalance'] = {(t,w): np.nan for t in self.data.T for w in self.data.W}
+             self.results['expected_imbalance'] = {t: np.nan for t in self.data.T}
+             self.results['profit'] = np.nan
+             self.results['profit_da_hourly_expected'] = {t: np.nan for t in self.data.T}
+             self.results['profit_imbalance_hourly_expected'] = {t: np.nan for t in self.data.T}
+             self.results['profit_per_scenario'] = {w: np.nan for w in self.data.W}
+             self.results['expected_real_prod_hourly'] = {t: np.nan for t in self.data.T}
+             self.results['avg_bid'] = np.nan
+             return # Stop saving if not optimal
+
+        # Saves the results of the model using dictionary keys
+        self.results['production'] = { # Use dict key assignment
             t: self.variables.production[t].X
             for t in self.data.T
         }
-        self.results.imbalance = {
-            (t,w): self.variables.imbalance[t,w].X
+        self.results['imbalance'] = { # Use dict key assignment
+            (t, w): self.variables.imbalance[t, w].X
             for t in self.data.T
             for w in self.data.W
         }
-        self.results.expected_imbalance = {
-            t: self.data.prob_scenario * sum(self.variables.imbalance[t, w].X for w in self.data.W)
+        self.results['expected_imbalance'] = { # Use dict key assignment
+            t: self.data.prob_scenario * sum(self.results['imbalance'][t, w] for w in self.data.W)
             for t in self.data.T
         }
-        self.results.profit = self.model.ObjVal
-        self.results.profit_da = {
-            t: self.data.prob_scenario * sum(self.data.scenario[w]['eprice'][t] * self.variables.production[t].X for w in self.data.W)
-            for t in self.data.T
-        }
-        self.results.profit_imbalance = {
-            (t,w): self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * self.data.scenario[w]['sc'][t]  +
-                self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * (1 - self.data.scenario[w]['sc'][t])
-                for t in self.data.T
-                for w in self.data.W
-        }
-        self.results.expected_profit_imbalance = {
-            t: self.data.prob_scenario * (
-                sum(self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * self.data.scenario[w]['sc'][t] for w in self.data.W) +
-                sum(self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * (1 - self.data.scenario[w]['sc'][t]) for w in self.data.W)
-            )
+        self.results['profit'] = self.model.ObjVal # Use dict key assignment
+
+        self.results['profit_da_hourly_expected'] = { # Use dict key assignment
+            t: self.data.prob_scenario * sum(self.data.scenarios[w]['eprice'][t] * self.results['production'][t] for w in self.data.W)
             for t in self.data.T
         }
 
-        self.results.profit_per_scenario = {
-            w: gp.quicksum(self.data.scenario[w]['eprice'][t] * self.variables.production[t].X + self.results.profit_imbalance[t,w] for t in self.data.T)
+        profit_imbalance_scenario_hourly = {
+            (t, w): ( self.data.scenarios[w]['sc'][t] * self.data.positiveBalancePriceFactor * self.data.scenarios[w]['eprice'][t] * self.results['imbalance'][t, w] ) +
+                      ( (1 - self.data.scenarios[w]['sc'][t]) * self.data.negativeBalancePriceFactor * self.data.scenarios[w]['eprice'][t] * self.results['imbalance'][t, w] )
+            for t in self.data.T
             for w in self.data.W
         }
 
-        self.results.expected_real_prod = {
-            t: self.data.prob_scenario * gp.quicksum(self.data.scenario[w]['rp'][t] for w in self.data.W) * self.data.p_nom
+        self.results['profit_imbalance_hourly_expected'] = { # Use dict key assignment
+             t: self.data.prob_scenario * sum(profit_imbalance_scenario_hourly[t, w] for w in self.data.W)
+             for t in self.data.T
+        }
+
+        self.results['profit_per_scenario'] = { # Use dict key assignment
+             w: sum( self.data.scenarios[w]['eprice'][t] * self.results['production'][t] + profit_imbalance_scenario_hourly[t,w]
+                     for t in self.data.T)
+             for w in self.data.W
+        }
+
+        self.results['expected_real_prod_hourly'] = { # Use dict key assignment
+            t: self.data.prob_scenario * sum(self.data.scenarios[w]['rp'][t] * self.data.p_nom for w in self.data.W)
             for t in self.data.T
         }
 
-        total_production = sum(value for value in self.results.production.values())
-        self.results.avg_bid = total_production / len(self.results.production)
+        total_production_bid = sum(self.results['production'].values())
+        self.results['avg_bid'] = total_production_bid / len(self.data.T) if self.data.T else 0 # Use dict key assignment
 
     def print_results(self):
-        print('-' * 30)
-        print(f'{"Results Summary":^30}')
-        print('-' * 30)
-        
-        print('-' * 30)
-        print("Average bid: {:.2f} €".format(self.results.avg_bid))
-        print('-' * 30)
+        # Access results using dictionary keys
+        if not self.results or 'profit' not in self.results or np.isnan(self.results['profit']): # Check dict/key
+             print("Results not available or model was not solved optimally.")
+             return
 
-        # Printing Production Results
-        print(f'{"Production (MW)":^30}')
-        print(f'{"Hour":^10} {"Production":^20}')
-        print('-' * 30)
-        for t in self.data.T:
-            print(f'{t:^10} {self.results.production[t]:^20.2f}')
-        print('-' * 30)
+        print('\n' + '-' * 50)
+        print(f'{"ONE PRICE MODEL - RESULTS SUMMARY":^50}')
+        print('-' * 50)
 
-        # Printing Profit from Production
-        print(f'{"Profit from Production (€)":^30}')
-        print(f'{"Hour":^10} {"Profit (€)":^20}')
-        print('-' * 30)
-        for t in self.data.T:
-            profit = self.data.scenario[1]['eprice'][t] * self.results.production[t]  # Assuming w=1 for simplicity
-            print(f'{t:^10} {profit:^20.2f}')
-        print('-' * 30)
+        print(f"Total Expected Profit: {self.results['profit']:.2f} €")
+        print(f"Average Hourly Bid: {self.results['avg_bid']:.2f} kW") # Changed unit label to kW
+        print('-' * 50)
 
-        # Printing Profit from Imbalance
-        print(f'{"Expected Profit from Imbalance (€)":^30}')
-        print(f'{"Hour":^10} {"Profit (€)":^20}')
-        print('-' * 30)
+        # --- Hourly Production Bids ---
+        print(f'{"Hourly Production Bids (kW)":^50}')
+        print(f'{"Hour":^10} {"Bid (kW)":^20} {"Exp. Real Prod (kW)":^20}')
+        print('-' * 50)
         for t in self.data.T:
-            expected_profit_imbalance = self.results.expected_profit_imbalance[t]
-            print(f'{t:^10} {expected_profit_imbalance:^20.2f}')
-        print('-' * 30)
-        # Printing Total Profit
-        print(f'Total Expected Profit: {self.results.profit:.2f} €')
+            print(f'{t:^10} {self.results["production"][t]:^20.2f} {self.results["expected_real_prod_hourly"][t]:^20.2f}')
+        print('-' * 50)
+
+        # --- Hourly Expected Profits ---
+        print(f'{"Hourly Expected Profits (€)":^50}')
+        print(f'{"Hour":^10} {"DA Profit":^15} {"Imbalance Profit":^15} {"Total Profit":^15}')
+        print('-' * 50)
+        total_profit_check = 0
+        for t in self.data.T:
+            da_prof = self.results['profit_da_hourly_expected'][t]
+            imb_prof = self.results['profit_imbalance_hourly_expected'][t]
+            total_hourly = da_prof + imb_prof
+            total_profit_check += total_hourly
+            print(f'{t:^10} {da_prof:^15.2f} {imb_prof:^15.2f} {total_hourly:^15.2f}')
+        print('-' * 50)
+        print(f'{"Sum of Hourly Exp. Profits:":<35} {total_profit_check:>15.2f} €')
+        print(f'{"Model Objective Value:":<35} {self.results["profit"]:>15.2f} €')
+        print('-' * 50)
+
 
     def plot(self):
-        # Define figure 
-        fig, ax = plt.subplots(figsize = (8,6))
+        # Define figure
+        # Access results using dictionary keys
+        if not self.results or 'profit' not in self.results or np.isnan(self.results['profit']): # Check dict/key
+             print("Cannot plot results: Results not available or model not solved optimally.")
+             return
 
-        # Define arrays to be plotted
-        expected_profit_imbalance_values = [self.results.expected_profit_imbalance[t] for t in self.data.T]
-        profit_da_values = [self.results.profit_da[t] for t in self.data.T]
-        total_profit = [expected_profit_imbalance_values[i] + profit_da_values[i] for i, _ in enumerate(profit_da_values)]
-        profit_per_scenario = [self.results.profit_per_scenario[w].getValue()for w in self.data.W]
+        fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(14, 10)) # Adjusted layout
+        fig.suptitle('One-Price Model Analysis', fontsize=16)
 
-        # Plot configuration
-        ax.plot(self.data.T, profit_da_values, label='Profit from DA', color='blue', marker = 'x', linestyle = '--')
-        ax.plot(self.data.T, expected_profit_imbalance_values, label='Expected profit from imbalance', color='red', marker = 'o', linestyle='-.')
-        ax.plot(self.data.T, total_profit, color = 'black', label = 'Total profit')
-        ax.set_ylabel('Profit (€)')
-        ax.set_xlabel('Time (h)')
-        ax.legend()
-        ax.grid()
+        hours = self.data.T
+        exp_profit_da = [self.results['profit_da_hourly_expected'].get(t, 0) for t in hours]
+        exp_profit_imb = [self.results['profit_imbalance_hourly_expected'].get(t, 0) for t in hours]
+        exp_total_profit = [p_da + p_imb for p_da, p_imb in zip(exp_profit_da, exp_profit_imb)]
+        bids = [self.results['production'].get(t, 0) for t in hours]
+        exp_real_prod = [self.results['expected_real_prod_hourly'].get(t, 0) for t in hours]
+        exp_imbalance = [self.results['expected_imbalance'].get(t, 0) for t in hours]
+        profit_per_scenario_values = list(self.results['profit_per_scenario'].values())
+
+        # Plot 1: Hourly Expected Profits
+        ax[0, 0].plot(hours, exp_profit_da, label='Exp. DA Profit', color='blue', marker='x', linestyle='--')
+        ax[0, 0].plot(hours, exp_profit_imb, label='Exp. Imbalance Profit', color='red', marker='o', linestyle='-.')
+        ax[0, 0].plot(hours, exp_total_profit, color='black', label='Total Exp. Profit', marker='.')
+        ax[0, 0].set_ylabel('Expected Profit (€)')
+        ax[0, 0].set_xlabel('Time (h)')
+        ax[0, 0].set_title('Hourly Expected Profits')
+        ax[0, 0].legend()
+        ax[0, 0].grid(True)
+
+        # Plot 2: Hourly Bids vs Expected Real Production
+        ax[0, 1].plot(hours, bids, label='Bid (kW)', color='green', marker='s', linestyle='-')
+        ax[0, 1].plot(hours, exp_real_prod, label='Exp. Real Prod (kW)', color='purple', marker='^', linestyle=':')
+        ax[0, 1].set_ylabel('Power (kW)')
+        ax[0, 1].set_xlabel('Time (h)')
+        ax[0, 1].set_title('Hourly Bids vs Expected Production')
+        ax[0, 1].legend()
+        ax[0, 1].grid(True)
+
+        # Plot 3: Profit Distribution Histogram
+        ax[1, 0].hist(profit_per_scenario_values, bins=30, alpha=0.75, color='skyblue', edgecolor='black')
+        ax[1, 0].set_title('Distribution of Profit Per Scenario')
+        ax[1, 0].set_xlabel('Total Profit per Scenario (€)')
+        ax[1, 0].set_ylabel('Number of Scenarios')
+        ax[1, 0].grid(True)
+        mean_profit = np.mean(profit_per_scenario_values)
+        ax[1, 0].axvline(mean_profit, color='red', linestyle='dashed', linewidth=1)
+        ax[1, 0].text(mean_profit*1.1, ax[1,0].get_ylim()[1]*0.9, f'Mean: {mean_profit:.2f}', color='red')
 
 
-        # Plot cumulative profit distribution
+        # Plot 4: Expected Hourly Imbalance
+        ax[1, 1].bar(hours, exp_imbalance, color='orange', label='Exp. Imbalance (kW)')
+        ax[1, 1].set_ylabel('Expected Imbalance (kW)')
+        ax[1, 1].set_xlabel('Time (h)')
+        ax[1, 1].set_title('Expected Hourly Imbalance (Real - Bid)')
+        ax[1, 1].axhline(0, color='black', linewidth=0.5)
+        ax[1, 1].grid(axis='y')
 
-        # Sort profit
-        cumulative_profit = profit_per_scenario
-        cumulative_profit.sort()
 
-        # Acumulate profit
-        cumulative_profit = np.cumsum(cumulative_profit)
+        plt.tight_layout(rect=[0, 0.03, 1, 0.95]) # Adjust layout to prevent title overlap
+        # Consider saving the plot from main script instead of showing here
+        # plt.show()
 
-        fig, ax = plt.subplots(1,2,figsize=(12, 6))
-
-        ax[0].hist(profit_per_scenario, bins=30, alpha=0.75, color='blue', edgecolor='black')
-        ax[0].set_title('Profit Distribution')
-        ax[0].set_xlabel('Profit (€)')
-        ax[0].set_ylabel('Scenarios')
-        ax[0].grid()
-
-        ax[1].step(range(len(cumulative_profit)), cumulative_profit, where='mid')
-        ax[1].set_title('Cumulative Profit Distribution')
-        ax[1].set_ylabel('Cumulative Profit (€)')
-        ax[1].set_xlabel('Scenarios')
-        ax[1].grid()
-        plt.tight_layout()
-
-        
-            
 
     def run(self):
-        # Makes sure the model is solved and saves the results
+        if not self.model:
+            print("Error: Model was not built successfully.")
+            return
+
         try:
+            if self.verbose: print("\nOptimizing model...")
             self.model.optimize()
-            self.model.write("one_price_model.lp")
-            if self.model.status == gp.GRB.INFEASIBLE:
-                print("Model is infeasible; computing IIS")
-                self.model.computeIIS()
-                self.model.write("model.ilp")  # Writes an ILP file with the irreducible inconsistent set.
-                print("IIS written to model.ilp")
-                exit()
-            elif self.model.status == gp.GRB.UNBOUNDED:
-                print("Model is unbounded")
-                exit()
-            elif self.model.status == gp.GRB.OPTIMAL:
+            # self.model.write("one_price_model.lp") # Optional: write LP file
+
+            if self.model.status == GRB.OPTIMAL:
                 if self.verbose:
-                    print("Optimization was successful!")
-                self.save_results()     
+                    print("Optimization successful!")
+                    print(f"Optimal Objective Value: {self.model.ObjVal:.2f} €")
+                self.save_results()
+                # Optionally call plot here if desired after run()
+                # self.plot()
+            elif self.model.status == GRB.INFEASIBLE:
+                print("Error: Model is infeasible.")
+                # Compute and write IIS file to help debug
+                print("Computing IIS (Irreducible Inconsistent Subsystem)...")
+                self.model.computeIIS()
+                self.model.write("one_price_model_infeasible.ilp")
+                print("IIS written to one_price_model_infeasible.ilp")
+                self.save_results() # Save NaNs
+            elif self.model.status == GRB.UNBOUNDED:
+                print("Error: Model is unbounded.")
+                self.save_results() # Save NaNs
             else:
-                raise TimeoutError("Gurobi optimization failed")       
+                print(f"Optimization finished with status code: {self.model.status}")
+                self.save_results() # Save NaNs
+
         except gp.GurobiError as e:
-            print(f"Error reported: {e}")
-            
-
-
-
-    
+            print(f"Gurobi Error code {e.errno}: {e}")
+            self.save_results() # Save NaNs
+        except Exception as e:
+             print(f"An unexpected error occurred during optimization: {e}")
+             self.save_results() # Save NaNs

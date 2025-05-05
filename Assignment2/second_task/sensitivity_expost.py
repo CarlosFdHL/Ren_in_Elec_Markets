@@ -2,10 +2,10 @@ import sys
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from .input_data import *
-from .model_one_price import OnePriceBiddingModel
-from .model_two_price import TwoPriceBiddingModel
-from .expost_analysis import ExPostAnalysis
+from input_data import *
+from model_one_price import OnePriceBiddingModel
+from model_two_price import TwoPriceBiddingModel
+from expost_analysis import ExPostAnalysis
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:

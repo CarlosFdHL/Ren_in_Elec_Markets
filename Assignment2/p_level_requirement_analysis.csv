@@ -1,0 +1,6 @@
+P_level,bid_kW,out_sample_success_rate_perc,out_sample_avg_shortfall_if_fail_kW,out_sample_expected_shortfall_kW
+80,482.20,85.00,42.01,6.30
+85,505.11,88.00,23.89,2.87
+90,507.86,92.00,31.70,2.54
+95,539.56,100.00,0.00,0.00
+99,539.56,100.00,0.00,0.00

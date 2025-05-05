@@ -3,9 +3,9 @@ import pandas as pd
 from sklearn.model_selection import ShuffleSplit
 
 
-from .input_data import InputData
-from .model_one_price import OnePriceBiddingModel
-from .model_two_price import TwoPriceBiddingModel
+from input_data import InputData
+from model_one_price import OnePriceBiddingModel
+from model_two_price import TwoPriceBiddingModel
 
 class ExPostAnalysis:
     def __init__(self, scenarios: list, indices: list, timeSpan: list, model_type: str, num_folds: int = 8, verbose: bool = True):
