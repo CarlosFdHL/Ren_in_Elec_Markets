@@ -25,6 +25,8 @@ class InputData:
         self.insample_scenarios = insample_scenarios
         self.out_of_sample_scenarios = out_of_sample_scenarios
 
+        self.epsilon_requirement = epsilon_requirement
+
         self.max_violated_scenarios = epsilon_requirement * len(self.W) * len(self.M) # Maximum number of violations
 
 # PATHS

@@ -49,7 +49,7 @@ class AncilliaryServiceBiddingModel():
         # Create the constraints
         print(".")
 
-        bigM = 1e6  # A large number to use as a big-M constant
+        bigM = 1e18  # A large number to use as a big-M constant
 
         self.constraints.capacity_limit = {
             (h, m, w): self.model.addConstr(
@@ -126,12 +126,66 @@ class AncilliaryServiceBiddingModel():
         for h in self.data.H:
             print(f"Hour {h}: {self.results.violation_count[h]}")
         
-        
+    def run_relaxed(self, delta=1e-5):
+        """
+        Solves the model using the ALSO-X algorithm by iteratively relaxing the binary constraints.
+
+        Args:
+            delta (float): Stopping tolerance parameter.
+            epsilon (float): Maximum violation probability threshold.
+        """
+        # Step 1: Initialize q and q_bar
+        q = 0
+        q_bar = self.data.epsilon_requirement * len(self.data.W) * len(self.data.M)  # Total number of samples × epsilon
+
+        # Relax the integrality of the binary variables
+        for (h, m, w), var in self.variables.violation_binary.items():
+            var.vtype = GRB.CONTINUOUS
+            var.lb = 0
+            var.ub = 1
+
+        self.model.update()
+        it = 0
+        # Step 2: Iterative process
+        while q_bar - q > delta:
+            it += 1
+            # Step 3: Set q as the midpoint
+            q = (q + q_bar) / 2
+
+            # Update the violation limit constraint with the new q
+            for h in self.data.H:
+                self.constraints.violation_limit[h].RHS = q
+
+            self.model.update()
+
+            # Step 4: Solve the relaxed problem
+            self.model.optimize()
+
+            if self.model.status != GRB.OPTIMAL:
+                raise RuntimeError("Optimization failed during ALSO-X execution.")
+
+            # Step 5: Check the probability condition
+            violation_prob = sum(
+                self.variables.violation_binary[h, m, w].X
+                for h in self.data.H
+                for m in self.data.M
+                for w in self.data.W
+            ) / (len(self.data.H) * len(self.data.M) * len(self.data.W))
+
+            if violation_prob >= 1 - self.data.epsilon_requirement:
+                q_bar = q
+            else:
+                q = q
+        self.model.write("second_task/p90_model.lp")    
+        self.save_results() 
+        print(self.variables.violation_binary[0,0,1].X)
+        print(f"Solved in {it} iterations with q = {q} and q_bar = {q_bar}.") 
+
     def run(self):
         # Makes sure the model is solved and saves the results
         try:
             self.model.optimize()
-            self.model.write("first_task/p90_model.lp")
+            self.model.write("second_task/p90_model.lp")
             if self.model.status == gp.GRB.INFEASIBLE:
                 print("Model is infeasible; computing IIS")
                 self.model.computeIIS()
