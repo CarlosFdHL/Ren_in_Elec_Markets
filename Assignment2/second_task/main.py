@@ -186,17 +186,4 @@ def main():
 
 
 if __name__ == "__main__":
-    # Ensure Gurobi is installed and licensed if running stochastic models
-    try:
-         import gurobipy
-         # Optional: Check license by creating a temporary environment
-         # with gurobipy.Env(empty=True) as env: env.start()
-         print("GurobiPy library found.")
-    except ImportError:
-         print("Warning: GurobiPy not found. Stochastic models (OnePrice, TwoPrice) will fail.")
-    except gurobipy.GurobiError as e: # Catch potential Gurobi license errors on import/env creation
-         print(f"Warning: Gurobi environment error: {e}. Stochastic models may fail.")
-    except Exception as e:
-         print(f"An unexpected error occurred related to Gurobi: {e}")
-
     main()

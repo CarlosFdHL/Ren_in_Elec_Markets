@@ -246,7 +246,7 @@ class OnePriceBiddingModel():
         # Makes sure the model is solved and saves the results
         try:
             self.model.optimize()
-            self.model.write("one_price_model.lp")
+            self.model.write("first_task/one_price_model.lp")
             if self.model.status == gp.GRB.INFEASIBLE:
                 print("Model is infeasible; computing IIS")
                 self.model.computeIIS()

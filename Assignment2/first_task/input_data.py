@@ -7,7 +7,7 @@ import random
 random.seed(5) #5
 
 class InputData:
-    def __init__(self, T:list, W:list, scenario:dict, prob_scenario:float):  
+    def __init__(self, T:list, W:list, scenario:dict, prob_scenario:float, model_type:str = 'one_price'):  
         # SETS
         self.T = T
         self.W = W
@@ -18,6 +18,8 @@ class InputData:
         self.prob_scenario = prob_scenario
         self.positiveBalancePriceFactor = 1.25
         self.negativeBalancePriceFactor = 0.85
+
+        self.model_type = model_type
     
 # --------------------------------------------------------------------------------
 #       DEFINITION OF SETS

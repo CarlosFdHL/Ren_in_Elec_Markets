@@ -265,7 +265,7 @@ class TwoPriceBiddingModel():
         # Makes sure the model is solved and saves the results
         try:
             self.model.optimize()
-            self.model.write("two_price_model.lp")
+            self.model.write("first_task/two_price_model.lp")
             if self.model.status == gp.GRB.INFEASIBLE:
                 print("Model is infeasible; computing IIS")
                 self.model.computeIIS()
