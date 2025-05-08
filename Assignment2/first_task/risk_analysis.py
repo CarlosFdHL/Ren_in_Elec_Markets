@@ -10,14 +10,20 @@ from input_data import InputData
 from model_one_price import OnePriceBiddingModel
 from model_two_price import TwoPriceBiddingModel
 
-class ExPostAnalysis:
-    def __init__(self, input_data : InputData, beta = int, alpha = int, verbose: bool = True):
 
+class ExPostAnalysis:
+    def __init__(self, input_data: InputData, beta=int, alpha=int, verbose: bool = True):
         self.data = input_data
         self.verbose = verbose
         self.model_type = self.data.model_type
         self.beta = beta
         self.alpha = alpha
+
+        # Initialize containers for model components
+        class ModelComponents: pass # Simple placeholder class
+        self.variables = ModelComponents()
+        self.constraints = ModelComponents()
+        self.results = ModelComponents() # Also initialize results if you use it similarly
 
         # Store the model class, not an instance
         if self.model_type == 'one_price':
@@ -26,6 +32,8 @@ class ExPostAnalysis:
             self.model_class = TwoPriceBiddingModel
         else:
             raise ValueError("Invalid model type. Use 'one_price' or 'two_price'.")
+
+    # ... rest of the class methods (build_variables, build_constraints, etc.)
         
     def build_variables(self):
         # Create the variables
