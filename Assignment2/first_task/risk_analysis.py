@@ -6,9 +6,9 @@ import gurobipy as gp
 from gurobipy import GRB
 
 
-from .input_data import InputData
-from .model_one_price import OnePriceBiddingModel
-from .model_two_price import TwoPriceBiddingModel
+from input_data import InputData
+from model_one_price import OnePriceBiddingModel
+from model_two_price import TwoPriceBiddingModel
 
 class ExPostAnalysis:
     def __init__(self, input_data : InputData, beta = int, alpha = int, verbose: bool = True):

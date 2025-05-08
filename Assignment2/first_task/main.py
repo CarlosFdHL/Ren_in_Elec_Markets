@@ -1,11 +1,11 @@
 import matplotlib.pyplot as plt
 import sys
 
-from .input_data import *
-from .model_one_price import OnePriceBiddingModel
-from .model_two_price import TwoPriceBiddingModel
-from .expost_analysis import ExPostAnalysis
-from .plotting import plot_comparison_bids
+from input_data import *
+from model_one_price import OnePriceBiddingModel
+from model_two_price import TwoPriceBiddingModel
+from expost_analysis import ExPostAnalysis
+from plotting import plot_comparison_bids
 
 
 if __name__ == "__main__":

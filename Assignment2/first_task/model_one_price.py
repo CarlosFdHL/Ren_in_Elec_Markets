@@ -7,7 +7,7 @@ import numpy as np
 plt.rcParams['font.family'] = 'serif' 
 plt.rcParams['font.size'] = 14
 
-from .input_data import InputData
+from input_data import InputData
 
 class Expando(object):
     '''
