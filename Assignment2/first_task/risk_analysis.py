@@ -175,11 +175,11 @@ class ExPostAnalysis:
             print("\nBuilding model")
         
         self.model = gp.Model(name="OnePriceBiddingModel")
-        self.model.setParam('OutputFlag', 0)
+        self.model.setParam('OutputFlag', 1 if self.verbose else 0)
         
         if self.verbose:
             print("\nBuilding variables")
-        self.build_variables()
+        self.build_variables()  
 
         if self.verbose:
             print("\nBuilding constraints")
@@ -329,7 +329,7 @@ class ExPostAnalysis:
         # Makes sure the model is solved and saves the results
         try:
             self.model.optimize()
-            self.model.write("one_price_model.lp")
+            self.model.write(f"{self.model_type}_model.lp")
             if self.model.status == gp.GRB.INFEASIBLE:
                 print("Model is infeasible; computing IIS")
                 self.model.computeIIS()

@@ -12,7 +12,7 @@ if __name__ == "__main__":
     
     # 1. Define input data parameters
     T = list(range(24))  # 24 hours
-    W = list(range(10))  # 10 scenarios
+    W = list(range(20))  # 10 scenarios
     prob_scenario = 1 / len(W)  # Equal probability
     
     # Create scenario data
@@ -43,7 +43,7 @@ if __name__ == "__main__":
             input_data=input_data,
             beta=beta,
             alpha=0.90,  # CVaR confidence level (as per task)
-            verbose=False  # Disable detailed logging for batch runs
+            verbose=True # Disable detailed logging for batch runs
         )
         
         model.build_model()
