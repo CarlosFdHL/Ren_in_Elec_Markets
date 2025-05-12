@@ -211,7 +211,6 @@ class RiskAverseExPostAnalysis:
             t: self.data.prob_scenario * sum(self.variables.imbalance[t, w].X for w in self.data.W)
             for t in self.data.T
         }
-        self.results.profit = self.model.ObjVal
         self.results.profit_da = {
             t: self.data.prob_scenario * sum(self.data.scenario[w]['eprice'][t] * self.variables.production[t].X for w in self.data.W)
             for t in self.data.T
@@ -230,6 +229,12 @@ class RiskAverseExPostAnalysis:
             for t in self.data.T
         }
 
+        self.results.expected_profit = {
+            t: self.results.profit_da[t] + self.results.expected_profit_imbalance[t]
+            for t in self.data.T
+        }
+        self.results.total_expected_profit = sum(self.results.expected_profit.values())
+
         self.results.profit_per_scenario = {
             w: gp.quicksum(self.data.scenario[w]['eprice'][t] * self.variables.production[t].X + self.results.profit_imbalance[t,w] for t in self.data.T)
             for w in self.data.W
@@ -242,6 +247,10 @@ class RiskAverseExPostAnalysis:
 
         total_production = sum(value for value in self.results.production.values())
         self.results.avg_bid = total_production / len(self.results.production)
+
+        # Save CVaR results
+        self.results.cvar = self.variables.value_at_risk.X - 1/(1-self.alpha) * sum(self.data.prob_scenario * self.variables.auxiliary_cvar[w].X for w in self.data.W)
+
 
     def print_results(self):
         print('-' * 30)

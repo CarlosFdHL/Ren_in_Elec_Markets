@@ -69,7 +69,7 @@ class ExPostAnalysis:
 
 
     def cross_validation(self, insample_size: int = 200, outsample_size: int = 1400):
-        ss = ShuffleSplit(n_splits=5, test_size=insample_size, train_size=outsample_size, random_state=42)
+        ss = ShuffleSplit(n_splits=self.K, test_size=insample_size, train_size=outsample_size, random_state=42)
         indices_array = np.array(self.W)
 
         results = []
