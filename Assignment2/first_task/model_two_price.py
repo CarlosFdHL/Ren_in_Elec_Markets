@@ -3,7 +3,7 @@ from gurobipy import GRB
 import matplotlib.pyplot as plt
 import numpy as np
 
-from input_data import InputData
+from .input_data import InputData
 
 class Expando(object):
     '''

@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import sys
 import numpy as np
-from input_data import InputData
-from risk_analysis import ExPostAnalysis
+from .input_data import InputData
+from .risk_analysis import RiskAverseExPostAnalysis
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -26,24 +26,20 @@ if __name__ == "__main__":
     }
     
     # 2. Create InputData instance
-    input_data = InputData(T=T, W=W, scenario=scenarios, prob_scenario=prob_scenario)
-    input_data.model_type = model_type
-    input_data.p_nom = 100  # Nominal power
-    input_data.positiveBalancePriceFactor = 0.9
-    input_data.negativeBalancePriceFactor = 0.8
+    input_data = InputData(T=T, W=W, scenario=scenarios, prob_scenario=prob_scenario, model_type=model_type)
     
     # 3. Run ExPostAnalysis for different beta values
-    beta_values = np.linspace(0, 1, 11)  # [0.0, 0.1, ..., 1.0]
+    beta_values = np.linspace(0, 1, 11) 
     results = []
     
     for beta in beta_values:
         print(f"\nRunning model with beta = {beta:.1f}")
         
-        model = ExPostAnalysis(
+        model = RiskAverseExPostAnalysis(
             input_data=input_data,
             beta=beta,
             alpha=0.90,  # CVaR confidence level (as per task)
-            verbose=True # Disable detailed logging for batch runs
+            verbose=False # Disable detailed logging for batch runs
         )
         
         model.build_model()

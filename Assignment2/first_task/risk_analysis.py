@@ -6,12 +6,12 @@ import gurobipy as gp
 from gurobipy import GRB
 
 
-from input_data import InputData
-from model_one_price import OnePriceBiddingModel
-from model_two_price import TwoPriceBiddingModel
+from .input_data import InputData
+from .model_one_price import OnePriceBiddingModel
+from .model_two_price import TwoPriceBiddingModel
 
 
-class ExPostAnalysis:
+class RiskAverseExPostAnalysis:
     def __init__(self, input_data: InputData, beta=int, alpha=int, verbose: bool = True):
         self.data = input_data
         self.verbose = verbose
@@ -24,16 +24,6 @@ class ExPostAnalysis:
         self.variables = ModelComponents()
         self.constraints = ModelComponents()
         self.results = ModelComponents() # Also initialize results if you use it similarly
-
-        # Store the model class, not an instance
-        if self.model_type == 'one_price':
-            self.model_class = OnePriceBiddingModel
-        elif self.model_type == 'two_price':
-            self.model_class = TwoPriceBiddingModel
-        else:
-            raise ValueError("Invalid model type. Use 'one_price' or 'two_price'.")
-
-    # ... rest of the class methods (build_variables, build_constraints, etc.)
         
     def build_variables(self):
         # Create the variables
@@ -51,6 +41,15 @@ class ExPostAnalysis:
             for t in self.data.T
         }
 
+        # Value at risk
+        self.variables.value_at_risk = self.model.addVar(name=f"ValueAtRisk")
+
+        # Auxiliary CVaR variable
+        self.variables.auxiliary_cvar = {
+            w: self.model.addVar(lb = 0, name=f"AuxiliaryCVaR_{w}")
+            for w in self.data.W
+        }
+
         if self.model_type == 'two_price':
             # Upward imbalance
             self.variables.up_imbalance = {
@@ -65,15 +64,6 @@ class ExPostAnalysis:
                 for w in self.data.W
                 for t in self.data.T
             }
-
-        # Value at risk
-        self.variables.value_at_risk = self.model.addVar(name=f"ValueAtRisk")
-
-        # Auxiliary CVaR variable
-        self.variables.auxiliary_cvar = {
-            w: self.model.addVar(lb = 0, name=f"AuxiliaryCVaR_{w}")
-            for w in self.data.W
-        }
     
     
     def build_constraints(self):
@@ -105,41 +95,53 @@ class ExPostAnalysis:
         # CVaR CONSTRAINTS
         if self.model_type == 'one_price':
             self.constraints.auxiliary_cvar = {
-                w: self.model.addConstr(self.variables.value_at_risk - 
-                                        self.data.prob_scenario * sum(self.data.scenario[w]['eprice'][t] * self.variables.production[t] + # Profit from production
-                                                            self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w] * self.data.scenario[w]['sc'][t] +        # Profit from imbalance in case of system requiring upward balance
-                                                            self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w] * (1 - self.data.scenario[w]['sc'][t])    # Profit from imbalance in case of system requiring downward balance
-                                                        for t in self.data.T
-                                                        ),
+                w: self.model.addConstr(
+                    self.variables.value_at_risk 
+                    - self.data.prob_scenario * sum(                                                    # <-- Start profit calculation
+                        self.data.scenario[w]['eprice'][t] * self.variables.production[t] +
+                        self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] *
+                            self.variables.imbalance[t, w] * self.data.scenario[w]['sc'][t] +
+                        self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] *
+                            self.variables.imbalance[t, w] * (1 - self.data.scenario[w]['sc'][t])      
+                        for t in self.data.T
+                    ),                                                                                  # <-- End profit calculation
                     GRB.LESS_EQUAL,
                     self.variables.auxiliary_cvar[w],
+
                     name=f"AuxiliaryCVaR_{w}"
-                    )
-                    for w in self.data.W
+                )
+                for w in self.data.W
             }
+
         elif self.model_type == 'two_price':
             self.constraints.auxiliary_cvar = {
-                w: self.model.addConstr(self.variables.value_at_risk - 
-                                        self.data.prob_scenario * sum(self.data.scenario[w]['eprice'][t] * self.variables.production[t]                                                                         # Profit from production
-                                                        + self.data.scenario[w]['sc'][t] * (self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t,w] 
-                                                                                            - self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t,w])   # Profit from imbalance in case of system requiring upward balance
-                                                        + (1 - self.data.scenario[w]['sc'][t]) * (self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t,w] 
-                                                                                            - self.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t,w])                                          # Profit from imbalance in case of system requiring downward balance
-                                                    for t in self.data.T
-                                                    ),
+                w: self.model.addConstr(
+                    self.variables.value_at_risk -
+                    self.data.prob_scenario * sum(                                                                                              # <-- Start profit calculation
+                        self.data.scenario[w]['eprice'][t] * self.variables.production[t]
+                        + self.data.scenario[w]['sc'][t] * (
+                            self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t, w]
+                            - self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t, w]
+                        )
+                        + (1 - self.data.scenario[w]['sc'][t]) * (
+                            self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t, w]
+                            - self.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t, w]
+                        )
+                        for t in self.data.T
+                    ),                                                                                                                          # <-- End profit calculation
                     GRB.LESS_EQUAL,
                     self.variables.auxiliary_cvar[w],
                     name=f"AuxiliaryCVaR_{w}"
-                    )
-                    for w in self.data.W
+                )
+                for w in self.data.W
             }
-            
+
             # The imabalance is defined as the difference between the up and down imbalance
-            self.constraints.imbalance_up_down = {
+            self.constraints.imbalance_definition = {
                 (t,w): self.model.addConstr(self.variables.imbalance[t,w],
                     GRB.EQUAL, 
                     self.variables.up_imbalance[t,w] - self.variables.down_imbalance[t,w],
-                    name=f"ImbalanceUpDown_{t}_{w}"
+                    name=f"ImbalanceDefinition_Hour{t}_Scenario{w}"
                 )
                 for t in self.data.T
                 for w in self.data.W
@@ -157,11 +159,11 @@ class ExPostAnalysis:
                                                         for w in self.data.W
                                                         ) 
         elif self.model_type == 'two_price':
-            self.objective_profit = self.data.prob_scenario * gp.quicksum(self.data.scenario[w]['eprice'][t] * self.variables.production[t] # Profit from production
+            self.objective_profit = self.data.prob_scenario * gp.quicksum(self.data.scenario[w]['eprice'][t] * self.variables.production[t]                                                                     # Profit from production
                                                 + self.data.scenario[w]['sc'][t] * (self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t,w] 
-                                                                                    - self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t,w]) # Profit from imbalance in case of system requiring upward balance
+                                                                                    - self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t,w])           # Profit from imbalance in case of system requiring upward balance
                                                 + (1 - self.data.scenario[w]['sc'][t]) * (self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t,w] 
-                                                                                    - self.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t,w])    # Profit from imbalance in case of system requiring downward balance
+                                                                                    - self.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t,w])                                                  # Profit from imbalance in case of system requiring downward balance
                                             for t in self.data.T
                                             for w in self.data.W
                                             ) 
