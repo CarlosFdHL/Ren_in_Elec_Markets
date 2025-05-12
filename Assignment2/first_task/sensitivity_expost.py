@@ -25,46 +25,48 @@ if __name__ == "__main__":
     model_expost = ExPostAnalysis(num_folds=8, scenarios=cv_scenarios, indices=cv_combinations, timeSpan=T, model_type=model_type, verbose=False)
 
     # Trying to run the cross-validation with different in-sample sizes
-    insample_sizes = range(100, 400, 20)  
+    K = [3, 4, 5, 6, 7, 8, 9, 10]
+    insample_sizes = [1600//k for k in K] 
     sensitivity_results = []
 
-    for insample_size in insample_sizes:
-        outsample_size = 1600 - insample_size
-        print(f"\n>>> insample={insample_size}, outsample={outsample_size}")
-
+    for i, k in enumerate(K):
+        # outsample_size = 1600 - insample_size
+        # print(f"\n>>> insample={insample_size}, outsample={outsample_size}")
         # Do Cross-validation
-        cv_results = model_expost.cross_validation(insample_size=insample_size, outsample_size=outsample_size)
+        cv_results = model_expost.cross_validation(k)
 
         # Calculate average profit difference
-        avg_difference = np.mean([r["difference"] for r in cv_results])
-        avg_relative_diff = np.mean([r["relative_difference"] for r in cv_results])
+        avg_insample_profit = np.mean([r["insample_expected_profit"] for r in cv_results])
+        avg_outofsample_profit = np.mean([r["outofsample_expected_profit"] for r in cv_results])
+        diff_of_averages = avg_insample_profit - avg_outofsample_profit
+        relative_diff_of_averages = (diff_of_averages / avg_insample_profit) * 100
+        
 
-
-        print(f"Average profit difference: {round(avg_difference, 1)}")
-        print(f"Average relative difference: {round(avg_relative_diff, 1)}")
+        print(f"Difference of the average profits: {round(diff_of_averages, 1)}")
+        print(f"Relative difference of the average profits: {round(relative_diff_of_averages, 1)}")
         # Save results
         sensitivity_results.append({
-            "insample_size": insample_size,
-            "outsample_size": outsample_size,
-            "avg_profit_difference": np.abs(avg_difference),
-            "avg_relative_difference": np.abs(avg_relative_diff)
+            "insample_size": insample_sizes[i],
+            "outsample_size": 1600 - insample_sizes[i],
+            "diff_of_averages": np.abs(diff_of_averages),
+            "relative_diff_of_averages": np.abs(relative_diff_of_averages)
         })
     df_sensitivity = pd.DataFrame(sensitivity_results)
 
     # Plot
     plt.figure(figsize=(8, 5))
-    plt.plot(df_sensitivity["insample_size"], df_sensitivity["avg_profit_difference"], marker="o")
+    plt.plot(df_sensitivity["insample_size"], df_sensitivity["diff_of_averages"], marker="o")
     plt.xlabel("In-sample size")
-    plt.ylabel("Average profit difference")
-    plt.title("Sensitivity analysis: in-sample size vs profit difference")
+    plt.ylabel("Difference of average expected profit of in and out sample")
+    # plt.title("Sensitivity analysis: in-sample size vs profit difference")
     plt.grid(True)
     plt.tight_layout()
 
     plt.figure(figsize=(8, 5))
-    plt.plot(df_sensitivity["insample_size"], df_sensitivity["avg_relative_difference"], marker="o", color="orange")
+    plt.plot(df_sensitivity["insample_size"], df_sensitivity["relative_diff_of_averages"], marker="o", color="orange")
     plt.xlabel("In-sample size")
-    plt.ylabel("Average relative profit difference (%)")
-    plt.title("Sensitivity analysis: in-sample size vs relative profit difference")
+    plt.ylabel("Relative difference of average expected profit of in and out sample (%)")
+    # plt.title("Sensitivity analysis: in-sample size vs relative profit difference")
     plt.grid(True)
     plt.tight_layout()
 

@@ -4,7 +4,8 @@ import os
 import glob
 import itertools
 import random
-random.seed(9) #5
+import matplotlib.pyplot as plt
+random.seed(5) #5
 
 class InputData:
     def __init__(self, T:list, W:list, scenario:dict, prob_scenario:float, model_type:str = 'one_price'):  
@@ -71,7 +72,15 @@ for file in files_rp_30:
 
     w_count += 1
 
+
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# fig, ax = plt.subplots()
+# for w in range(1,w_count):
+#     ax.plot(rp_scenarios[w].keys(), rp_scenarios[w].values(), label=f'Scenario {w+1}')
+# plt.show()
 # System condition scenarios
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 sc_scenarios = {}
 system_condition_scenarios = pd.read_csv(path_system_cond, sep=',')
 num_rows = system_condition_scenarios.shape[0]
@@ -87,6 +96,12 @@ for file in files_eprice:
     data = dict(zip(T[:], data.iloc[:,1]))
     eprice_scenarios[w_count] = data
     w_count += 1
+# We don't want negative prices, so we set them to 0, if they exist
+for scenario in eprice_scenarios.values():
+    for t in scenario:
+        if scenario[t] < 0:
+            scenario[t] = 0
+
 rp_keys = list(rp_scenarios.keys())
 sc_keys = list(sc_scenarios.keys())
 eprice_keys = list(eprice_scenarios.keys())
@@ -130,5 +145,7 @@ expost_scenarios = {i+1: {
 } for i, (rp_index, sc_index, eprice_index) in enumerate(expost_combinations)}
 
 W_expost = list(expost_scenarios.keys())
+
+negative_price_count = 0
 
 # --------------------------------------------------------------------------------

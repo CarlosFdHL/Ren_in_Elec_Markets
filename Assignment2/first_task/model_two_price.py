@@ -141,11 +141,24 @@ class TwoPriceBiddingModel():
             for t in self.data.T
             for w in self.data.W
         }
+        self.results.up_imbalance = {
+            (t,w): self.variables.up_imbalance[t,w].X
+            for t in self.data.T
+            for w in self.data.W
+        }
+        self.results.down_imbalance = {
+            (t,w): self.variables.down_imbalance[t,w].X
+            for t in self.data.T
+            for w in self.data.W
+        }
+
         self.results.expected_imbalance = {
             t: self.data.prob_scenario * sum(self.variables.imbalance[t, w].X for w in self.data.W)
             for t in self.data.T
         }
+
         self.results.profit = self.model.ObjVal
+        
         self.results.profit_da = {
             t: self.data.prob_scenario * sum(self.data.scenario[w]['eprice'][t] * self.variables.production[t].X for w in self.data.W)
             for t in self.data.T
@@ -153,9 +166,9 @@ class TwoPriceBiddingModel():
 
         self.results.profit_imbalance = {
             (t,w): self.data.scenario[w]['sc'][t] * (self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t,w].X 
-                                                                                            - self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t,w].X) # Profit from imbalance in case of system requiring upward balance
-                                                        + (1 - self.data.scenario[w]['sc'][t]) * (self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t,w].X 
-                                                                                            - self.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t,w].X)    # Profit from imbalance in case of system requiring downward balance
+                    - self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t,w].X)                                         # Profit from imbalance in case of system requiring upward balance
+                    + (1 - self.data.scenario[w]['sc'][t]) * (self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t,w].X 
+                    - self.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t,w].X)                                                                                # Profit from imbalance in case of system requiring downward balance
                 for t in self.data.T
                 for w in self.data.W
         }
