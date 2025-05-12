@@ -39,18 +39,31 @@ class ExPostAnalysis:
 
     def outsample_analysis(self, model, scenarios):
 
-        imbalance = {
-            (t, w): scenarios[w]['rp'][t] * model.data.p_nom - model.results.production[t] 
-            for t in model.data.T 
-            for w in scenarios.keys()
-        }
 
-        imbalance_profit = {
-            (t, w): model.data.positiveBalancePriceFactor * scenarios[w]['eprice'][t] * imbalance[t, w] * scenarios[w]['sc'][t]  +
-                model.data.negativeBalancePriceFactor * scenarios[w]['eprice'][t] * imbalance[t,w] * (1 - scenarios[w]['sc'][t])
-                for t in model.data.T
+        if model.data.model_type == 'two_price':
+            imbalance = {
+                (t, w): scenarios[w]['rp'][t] * model.data.p_nom - model.results.production[t] 
+                for t in model.data.T 
                 for w in scenarios.keys()
-        }
+            }
+            imbalance_profit = {
+                (t, w): model.data.positiveBalancePriceFactor * scenarios[w]['eprice'][t] * imbalance[t, w] * scenarios[w]['sc'][t]  +
+                    model.data.negativeBalancePriceFactor * scenarios[w]['eprice'][t] * imbalance[t,w] * (1 - scenarios[w]['sc'][t])
+                    for t in model.data.T
+                    for w in scenarios.keys()
+            }
+        elif model.data.model_type == 'one_price':
+            print("One price model:", model.data.model_type)
+            imbalance_profit = {
+                (t,w): scenarios[w]['sc'][t] * (scenarios[w]['eprice'][t] * model.variables.up_imbalance[t,w].X 
+                        - model.data.positiveBalancePriceFactor * scenarios[w]['eprice'][t] * model.variables.down_imbalance[t,w].X)                                            # Profit from imbalance in case of system requiring upward balance
+                        + (1 - scenarios[w]['sc'][t]) * (model.data.negativeBalancePriceFactor * scenarios[w]['eprice'][t] * model.variables.up_imbalance[t,w].X 
+                        - model.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t,w].X)                                                                           # Profit from imbalance in case of system requiring downward balance
+                    for t in model.data.T
+                    for w in model.data.W
+            }
+        else:
+            raise ValueError("Invalid model type. Use 'one_price' or 'two_price'.")
 
         expected_imbalance = {
             t: sum(imbalance[t, w] for w in scenarios.keys()) / len(scenarios)
@@ -69,7 +82,7 @@ class ExPostAnalysis:
 
 
     def cross_validation(self, insample_size: int = 200, outsample_size: int = 1400):
-        ss = ShuffleSplit(n_splits=5, test_size=insample_size, train_size=outsample_size, random_state=42)
+        ss = ShuffleSplit(n_splits=self.K, test_size=insample_size, train_size=outsample_size, random_state=42)
         indices_array = np.array(self.W)
 
         results = []
@@ -92,6 +105,8 @@ class ExPostAnalysis:
                 indices=in_indices
             )
             insample_profit = profit_total
+
+            print("!!!!!!", model.data.model_type)
 
             # Step 2: evaluate out-of-sample
             expected_imbalance, expected_profit_imbalance = self.outsample_analysis(
