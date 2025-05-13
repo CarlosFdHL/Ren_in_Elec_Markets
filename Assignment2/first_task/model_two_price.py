@@ -158,7 +158,7 @@ class TwoPriceBiddingModel():
         }
 
         self.results.profit = self.model.ObjVal
-        
+
         self.results.profit_da = {
             t: self.data.prob_scenario * sum(self.data.scenario[w]['eprice'][t] * self.variables.production[t].X for w in self.data.W)
             for t in self.data.T
@@ -216,7 +216,7 @@ class TwoPriceBiddingModel():
         print(f'{"Hour":^10} {"Profit (€)":^20}')
         print('-' * 30)
         for t in self.data.T:
-            profit = self.data.scenario[1]['eprice'][t] * self.results.production[t]  # Assuming w=1 for simplicity
+            profit = self.data.scenario[1]['eprice'][t] * self.results.production[t]  # Only for the first scenario
             print(f'{t:^10} {profit:^20.2f}')
         print('-' * 30)
 
@@ -281,12 +281,11 @@ class TwoPriceBiddingModel():
         # Makes sure the model is solved and saves the results
         try:
             self.model.optimize()
-            self.model.write("first_task/two_price_model.lp")
+            self.model.write("first_task/verification/two_price_model.lp")
             if self.model.status == gp.GRB.INFEASIBLE:
                 print("Model is infeasible; computing IIS")
-                self.model.computeIIS()
-                self.model.write("model.ilp")  # Writes an ILP file with the irreducible inconsistent set.
-                print("IIS written to model.ilp")
+                self.model.write("first_task/verification/model.ilp")  # Writes an ILP file with the irreducible inconsistent set.
+                print("IIS written to first_task/verification/model.ilp")
                 exit()
             elif self.model.status == gp.GRB.UNBOUNDED:
                 print("Model is unbounded")

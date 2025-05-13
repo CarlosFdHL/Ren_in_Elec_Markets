@@ -42,8 +42,8 @@ if __name__ == "__main__":
 
 
     # Ex-post analysis
-    model_expost = ExPostAnalysis(num_folds=8, scenarios=cv_scenarios, indices=cv_combinations, timeSpan=T, model_type=model_type, verbose=True)
-    cv_results = model_expost.cross_validation(insample_size=200, outsample_size=1400)
+    model_expost = ExPostAnalysis(timeSpan=T, scenarios=cv_scenarios, model_type=model_type, verbose=True)
+    cv_results = model_expost.cross_validation(K = 8)
     plt.show()
 
     print("\nEnd of main.py\n")

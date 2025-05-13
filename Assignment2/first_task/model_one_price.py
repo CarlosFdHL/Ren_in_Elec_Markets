@@ -77,7 +77,7 @@ class OnePriceBiddingModel():
         # Create the objective function
 
         # The objective function is defined as the profit from production and the profit from imbalance
-        self.objective = self.data.prob_scenario * gp.quicksum(self.data.scenario[w]['eprice'][t] * self.variables.production[t] + # Profit from production
+        self.objective = self.data.prob_scenario * gp.quicksum(self.data.scenario[w]['eprice'][t] * self.variables.production[t] +                                                                            # Profit from production
                                                           self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w] * self.data.scenario[w]['sc'][t] +        # Profit from imbalance in case of system requiring upward balance
                                                           self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w] * (1 - self.data.scenario[w]['sc'][t])    # Profit from imbalance in case of system requiring downward balance
                                                     for t in self.data.T
@@ -180,7 +180,7 @@ class OnePriceBiddingModel():
         print(f'{"Hour":^10} {"Profit (€)":^20}')
         print('-' * 30)
         for t in self.data.T:
-            profit = self.data.scenario[1]['eprice'][t] * self.results.production[t]  # Assuming w=1 for simplicity
+            profit = self.data.scenario[1]['eprice'][t] * self.results.production[t]  # Only for the first scenario
             print(f'{t:^10} {profit:^20.2f}')
         print('-' * 30)
 
@@ -246,12 +246,11 @@ class OnePriceBiddingModel():
         # Makes sure the model is solved and saves the results
         try:
             self.model.optimize()
-            self.model.write("first_task/one_price_model.lp")
+            self.model.write("first_task/verification/one_price_model.lp")
             if self.model.status == gp.GRB.INFEASIBLE:
                 print("Model is infeasible; computing IIS")
-                self.model.computeIIS()
-                self.model.write("model.ilp")  # Writes an ILP file with the irreducible inconsistent set.
-                print("IIS written to model.ilp")
+                self.model.write("first_task/verification/model.ilp")  # Writes an ILP file with the irreducible inconsistent set.
+                print("IIS written to first_task/verification/model.ilp")
                 exit()
             elif self.model.status == gp.GRB.UNBOUNDED:
                 print("Model is unbounded")

@@ -321,12 +321,11 @@ class ExPostAnalysis:
         # Makes sure the model is solved and saves the results
         try:
             self.model.optimize()
-            self.model.write("one_price_model.lp")
+            self.model.write("first_task/output/verification/risk_analysis/model.lp")
             if self.model.status == gp.GRB.INFEASIBLE:
                 print("Model is infeasible; computing IIS")
-                self.model.computeIIS()
-                self.model.write("model.ilp")  # Writes an ILP file with the irreducible inconsistent set.
-                print("IIS written to model.ilp")
+                self.model.write("first_task/output/verification/risk_analysis/model.ilp")  # Writes an ILP file with the irreducible inconsistent set.
+                print("IIS written to mfirst_task/output/verification/risk_analysis/model.ilp")
                 exit()
             elif self.model.status == gp.GRB.UNBOUNDED:
                 print("Model is unbounded")

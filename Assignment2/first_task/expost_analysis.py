@@ -8,8 +8,7 @@ from .model_one_price import OnePriceBiddingModel
 from .model_two_price import TwoPriceBiddingModel
 
 class ExPostAnalysis:
-    def __init__(self, scenarios: list, indices: list, timeSpan: list, model_type: str, num_folds: int = 8, verbose: bool = True):
-        self.K = num_folds
+    def __init__(self, scenarios: list, timeSpan: list, model_type: str, verbose: bool = True):
         self.scenarios = scenarios
         self.W = list(range(1, len(scenarios)+1))
         self.n_scenarios = len(self.W)
@@ -111,7 +110,7 @@ class ExPostAnalysis:
 
         for i, (out_index, in_index) in enumerate(kf.split(indices_array)):
             if self.verbose:
-                print(f"\n=== FOLD {i}/{self.K} ===")
+                print(f"\n=== FOLD {i}/{K} ===")
                 print(f"In-sample scenarios: {len(in_index)} | Out-of-sample scenarios: {len(out_index)}")
 
             # Convert indices to scenario keys (they start from 1)
@@ -132,9 +131,11 @@ class ExPostAnalysis:
                 scenarios=out_scenarios
             )
 
+            # Step 3: calculate expected profit and profit difference
             outofsample_expected_profit = outsample_profit_da + outsample_expected_profit_imbalance
             profit_difference = insample_expected_profit - outofsample_expected_profit
 
+            # Print logs
             if self.verbose:
                 print(f"In-sample profit DA: {round(sum(profit_da.values()), 1)}")
                 print(f"In-sample total expected profit: {round(insample_expected_profit, 1)}")
@@ -157,6 +158,7 @@ class ExPostAnalysis:
                 "expected_relative_difference": profit_difference / insample_expected_profit * 100,
             })
         
+        # Print summary of results
         if self.verbose:
             print(f"\n=== RESULTS SUMMARY ===")
             # Average of results accross all folds
