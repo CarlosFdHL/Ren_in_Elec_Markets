@@ -23,11 +23,9 @@ if __name__ == "__main__":
         model = RiskAverseExPostAnalysis(
             input_data=input_data,
             beta=beta,
-            alpha=0.90,  # CVaR confidence level (as per task)
+            alpha=0.90,   # CVaR confidence level (as per task)
             verbose=False # Disable detailed logging for batch runs
         )
-        
-        model.build_model()
         model.run()
         
         # Store results

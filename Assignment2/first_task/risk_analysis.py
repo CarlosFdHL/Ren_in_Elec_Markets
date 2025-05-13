@@ -14,7 +14,7 @@ from .model_two_price import TwoPriceBiddingModel
 class RiskAverseExPostAnalysis:
     def __init__(self, input_data: InputData, beta=int, alpha=int, verbose: bool = True):
         self.data = input_data
-        self.verbose = verbose
+        self.verbose = verbose # Verbose flag for detailed logging
         self.model_type = self.data.model_type
         self.beta = beta
         self.alpha = alpha
@@ -24,6 +24,8 @@ class RiskAverseExPostAnalysis:
         self.variables = ModelComponents()
         self.constraints = ModelComponents()
         self.results = ModelComponents() # Also initialize results if you use it similarly
+
+        self.build_model()
         
     def build_variables(self):
         # Create the variables
@@ -176,7 +178,7 @@ class RiskAverseExPostAnalysis:
         if self.verbose:
             print("\nBuilding model")
         
-        self.model = gp.Model(name="OnePriceBiddingModel")
+        self.model = gp.Model(name="RiskAverseAnalysis")
         self.model.setParam('OutputFlag', 1 if self.verbose else 0)
         
         if self.verbose:
@@ -274,7 +276,7 @@ class RiskAverseExPostAnalysis:
         print(f'{"Hour":^10} {"Profit (€)":^20}')
         print('-' * 30)
         for t in self.data.T:
-            profit = self.data.scenario[1]['eprice'][t] * self.results.production[t]  # Assuming w=1 for simplicity
+            profit = self.data.scenario[1]['eprice'][t] * self.results.production[t]  # Only first scenario
             print(f'{t:^10} {profit:^20.2f}')
         print('-' * 30)
 
@@ -343,7 +345,6 @@ class RiskAverseExPostAnalysis:
             self.model.write(f"{self.model_type}_model.lp")
             if self.model.status == gp.GRB.INFEASIBLE:
                 print("Model is infeasible; computing IIS")
-                self.model.computeIIS()
                 self.model.write("model.ilp")  # Writes an ILP file with the irreducible inconsistent set.
                 print("IIS written to model.ilp")
                 exit()
