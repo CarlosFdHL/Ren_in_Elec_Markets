@@ -45,7 +45,7 @@ class ExPostAnalysis:
         total_profit_da = sum(profit_da.values())
         # Calculate the imbalance for the out-of-sample scenarios. This imbalance is the same for one or two price schemes.
         imbalance = {
-            (t, w): scenarios[w]['rp'][t] * model.data.p_nom - model.results.production[t] 
+            (t, w): (scenarios[w]['rp'][t] * model.data.p_nom) - model.results.production[t] 
             for t in model.data.T 
             for w in scenarios.keys()
         }

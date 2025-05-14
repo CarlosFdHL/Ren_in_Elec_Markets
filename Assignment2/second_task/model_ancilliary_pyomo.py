@@ -12,7 +12,7 @@ plt.rcParams.update(tt_params)
 from .input_data import InputData
 
 class AncilliaryServiceBiddingModelPyomo:
-    def __init__(self, input_data: InputData, verbose: bool = True, solver: str = 'pyomo'):
+    def __init__(self, input_data: InputData, verbose: bool = True, solver: str = 'HiGHs'):
         if verbose:
             print('\n' + '-'*50)
             print(f"{'ANCILLIARY SERVICE BIDDING MODEL (Pyomo)':^50}")
@@ -27,30 +27,29 @@ class AncilliaryServiceBiddingModelPyomo:
         m = self.model
         m.bid_capacity = Var(self.data.H, domain=NonNegativeReals, name='bid_capacity')
         m.violation_binary = Var(
-            [(h, mmin, w) for h in self.data.H for mmin in self.data.M for w in self.data.W],
+            [(h, m, w) for h in self.data.H for m in self.data.M for w in self.data.W],
             domain=Binary,
             name='violation_binary'
         )
 
     def build_constraints(self):
         m = self.model
-        bigM = 1e18
+        bigM = 1e9
 
-        def capacity_limit_rule(model, h, mmin, w):
-            return model.bid_capacity[h] <= (
-                self.data.insample_scenarios[h*60 + mmin, w] + bigM * model.violation_binary[h, mmin, w]
-            )
+        def capacity_limit_rule(model, h, m, w):
+            return model.bid_capacity[h] - self.data.insample_scenarios[h*60 + m, w] <= bigM * model.violation_binary[h, m, w]
+
         m.capacity_limit = Constraint(
-            [(h, mmin, w) for h in self.data.H for mmin in self.data.M for w in self.data.W],
+            [(h, m, w) for h in self.data.H for m in self.data.M for w in self.data.W],
             rule=capacity_limit_rule,
             name='capacity_limit'
         )
 
         def violation_limit_rule(model, h):
             return sum(
-                model.violation_binary[h, mmin, w]
-                for mmin in self.data.M for w in self.data.W
-            ) <= self.data.epsilon_requirement * len(self.data.M) * len(self.data.W)
+                model.violation_binary[h, m, w]
+                for m in self.data.M for w in self.data.W
+            ) <= self.data.max_violated_scenarios
         m.violation_limit = Constraint(self.data.H, rule=violation_limit_rule, name='violation_limit')
 
     def build_objective_function(self):
@@ -75,34 +74,74 @@ class AncilliaryServiceBiddingModelPyomo:
             print('Solver status:', result.solver.status)
         return self._extract_results()
 
-    def run_relaxed(self, delta: float = 1e-5):
-        m = self.model
-        # Relax binaries to continuous
-        for h, mmin, w in m.violation_binary:
-            m.violation_binary[h, mmin, w].domain = UnitInterval
-        # ALSO-X style bisection
-        q_low, q_high = 0, self.data.epsilon_requirement * len(self.data.M) * len(self.data.W)
-        q = 0
-        iteration = 0
-        while q_high - q > delta:
-            iteration += 1
-            q = (q + q_high) / 2
-            # update RHS of violation_limit
-            for h in self.data.H:
-                m.violation_limit[h].set_value(
-                    sum(m.violation_binary[h, mmin, w] for mmin in self.data.M for w in self.data.W) <= q
-                )
-            self.solver.solve(m, tee=self.verbose)
-            total_viol = sum(
-                m.violation_binary[h, mmin, w].value
-                for h in self.data.H for mmin in self.data.M for w in self.data.W
+    def run_hourly(self):
+        bids = {}
+        violations = {}
+        violation_count = {}
+
+        for h in self.data.H:
+            if self.verbose:
+                print(f"\nSolving for hour h = {h}")
+
+            # Create a new model for each hour
+            model = ConcreteModel()
+
+            # Variables
+            model.bid_capacity = Var(domain=NonNegativeReals, name=f'bid_capacity_{h}')
+            model.violation_binary = Var(
+                [(m, w) for m in self.data.M for w in self.data.W],
+                domain=Binary,
+                name=f'violation_binary_{h}'
             )
-            prob = total_viol / (len(self.data.H)*len(self.data.M)*len(self.data.W))
-            if prob >= 1 - self.data.epsilon_requirement:
-                q_high = q
-            else:
-                q_low = q
-        return self._extract_results(), iteration, q, q_high
+
+            # Parameters
+            bigM = 1e9
+                        # Constraints
+            def capacity_limit_rule(model, m, w):
+                minute_global = h * 60 + m
+                return model.bid_capacity - self.data.insample_scenarios[minute_global, w] <= bigM * model.violation_binary[m, w]
+
+            model.capacity_limit = Constraint(
+                [(m, w) for m in self.data.M for w in self.data.W],
+                rule=capacity_limit_rule,
+                name=f'capacity_limit_{h}'
+            )
+
+            def violation_limit_rule(model):
+                return sum(model.violation_binary[m, w] for m in self.data.M for w in self.data.W) <= self.data.max_violated_scenarios
+
+            model.violation_limit = Constraint(rule=violation_limit_rule, name=f'violation_limit_{h}')
+
+            # Objective
+            model.obj = Objective(expr=model.bid_capacity, sense=maximize)
+
+            # Solve
+            result = self.solver.solve(model, tee=False)
+
+            # Force the variables to be binary
+            for m in self.data.M:
+                for w in self.data.W:
+                    model.violation_binary[m, w].value = round(model.violation_binary[m, w].value)
+            
+            if self.verbose:
+                print('Solver status:', result.solver.status)
+                # Print the selected capacity
+                print(f"Selected capacity for hour {h}: {model.bid_capacity.value}")
+                print(f"Violation count for hour {h}: {sum(model.violation_binary[m, w].value for m in self.data.M for w in self.data.W)}")
+
+            # Extract results for this hour
+            bids[h] = model.bid_capacity.value
+            for m in self.data.M:
+                for w in self.data.W:
+                    violations[(h, m, w)] = model.violation_binary[m, w].value
+            violation_count[h] = sum(
+                model.violation_binary[m, w].value
+                for m in self.data.M
+                for w in self.data.W
+            )
+
+        return bids, violations, violation_count
+
     
     def _extract_results(self):
         m = self.model

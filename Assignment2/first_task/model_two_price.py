@@ -94,7 +94,7 @@ class TwoPriceBiddingModel():
         # Create the objective function
 
         # The objective function is defined as the profit from production and the profit from imbalance
-        self.objective = self.data.prob_scenario * gp.quicksum(self.data.scenario[w]['eprice'][t] * self.variables.production[t] # Profit from production
+        self.objective = self.data.prob_scenario * sum(self.data.scenario[w]['eprice'][t] * self.variables.production[t] # Profit from production
                                                         + self.data.scenario[w]['sc'][t] * (self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t,w] 
                                                                                             - self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t,w]) # Profit from imbalance in case of system requiring upward balance
                                                         + (1 - self.data.scenario[w]['sc'][t]) * (self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t,w] 
@@ -281,7 +281,7 @@ class TwoPriceBiddingModel():
         # Makes sure the model is solved and saves the results
         try:
             self.model.optimize()
-            self.model.write("first_task/verification/two_price_model.lp")
+            self.model.write("first_task/output/verification/two_price_model.lp")
             if self.model.status == gp.GRB.INFEASIBLE:
                 print("Model is infeasible; computing IIS")
                 self.model.write("first_task/verification/model.ilp")  # Writes an ILP file with the irreducible inconsistent set.

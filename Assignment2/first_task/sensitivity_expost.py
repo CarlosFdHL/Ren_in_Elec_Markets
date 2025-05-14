@@ -21,9 +21,6 @@ if __name__ == "__main__":
         raise ValueError("Invalid model type. Use 'one_price' or 'two_price'.")
     
 
-    # Define the model
-    model_expost = ExPostAnalysis(timeSpan=T, scenarios=cv_scenarios, model_type=model_type, verbose=False)
-
     # Trying to run the cross-validation with different in-sample sizes
     K = [3, 4, 5, 6, 7, 8, 9, 10]
     insample_sizes = [len(cv_scenarios)//k for k in K] 
@@ -32,6 +29,10 @@ if __name__ == "__main__":
     sensitivity_results = []
     for i, k in enumerate(K):
         print(f"\n>>> KFold: {k}")
+        
+        # Define the model
+        model_expost = ExPostAnalysis(timeSpan=T, scenarios=cv_scenarios, model_type=model_type, verbose=False)
+        
         cv_results = model_expost.cross_validation(k)
 
         # Calculate average profit difference
