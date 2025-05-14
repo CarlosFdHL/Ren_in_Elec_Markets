@@ -44,7 +44,7 @@ class RiskAverseExPostAnalysis:
         }
 
         # Value at risk
-        self.variables.value_at_risk = self.model.addVar(name=f"ValueAtRisk")
+        self.variables.value_at_risk = self.model.addVar(lb = 0, name=f"ValueAtRisk")
 
         # Auxiliary CVaR variable
         self.variables.auxiliary_cvar = {
@@ -55,14 +55,14 @@ class RiskAverseExPostAnalysis:
         if self.model_type == 'two_price':
             # Upward imbalance
             self.variables.up_imbalance = {
-                (t,w): self.model.addVar(lb=0, name=f"UpImbalance_hour{t}_scenario{w}")
+                (t,w): self.model.addVar(lb=0, ub=self.data.p_nom, name=f"UpImbalance_hour{t}_scenario{w}")
                 for w in self.data.W
                 for t in self.data.T
             }
 
             # Downward imbalance
             self.variables.down_imbalance = {
-                (t,w): self.model.addVar(lb=0, name=f"DownImbalance_hour{t}_scenario{w}")
+                (t,w): self.model.addVar(lb=0, ub=self.data.p_nom, name=f"DownImbalance_hour{t}_scenario{w}")
                 for w in self.data.W
                 for t in self.data.T
             }
@@ -99,7 +99,7 @@ class RiskAverseExPostAnalysis:
             self.constraints.auxiliary_cvar = {
                 w: self.model.addConstr(
                     self.variables.value_at_risk 
-                    - self.data.prob_scenario * sum(                                                    # <-- Start profit calculation
+                    - sum(                                                                              # <-- Start profit calculation
                         self.data.scenario[w]['eprice'][t] * self.variables.production[t] +
                         self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] *
                             self.variables.imbalance[t, w] * self.data.scenario[w]['sc'][t] +
@@ -119,7 +119,7 @@ class RiskAverseExPostAnalysis:
             self.constraints.auxiliary_cvar = {
                 w: self.model.addConstr(
                     self.variables.value_at_risk -
-                    self.data.prob_scenario * sum(                                                                                              # <-- Start profit calculation
+                    sum(                                                                                                                        # <-- Start profit calculation
                         self.data.scenario[w]['eprice'][t] * self.variables.production[t]
                         + self.data.scenario[w]['sc'][t] * (
                             self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t, w]
@@ -171,7 +171,7 @@ class RiskAverseExPostAnalysis:
                                             ) 
         self.objective_cvar = self.variables.value_at_risk - 1/(1-self.alpha) * sum(self.data.prob_scenario * self.variables.auxiliary_cvar[w] for w in self.data.W)
         # The objective is to maximize profit
-        self.model.setObjective((1 - self.beta) * self.objective_profit + self.beta * self.objective_cvar , GRB.MAXIMIZE)
+        self.model.setObjective((1 - self.beta) * self.objective_profit + self.beta * self.objective_cvar, GRB.MAXIMIZE)
 
     def build_model(self):
         # Creates the model and calls the functions to build the variables, constraints, and objective function
@@ -217,19 +217,35 @@ class RiskAverseExPostAnalysis:
             t: self.data.prob_scenario * sum(self.data.scenario[w]['eprice'][t] * self.variables.production[t].X for w in self.data.W)
             for t in self.data.T
         }
-        self.results.profit_imbalance = {
-            (t,w): self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * self.data.scenario[w]['sc'][t]  +
-                self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * (1 - self.data.scenario[w]['sc'][t])
+
+        if self.data.model_type == 'one_price': 
+            self.results.profit_imbalance = {
+                (t,w): self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * self.data.scenario[w]['sc'][t]  +
+                    self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * (1 - self.data.scenario[w]['sc'][t])
+                    for t in self.data.T
+                    for w in self.data.W
+            }
+            self.results.expected_profit_imbalance = {
+                t: self.data.prob_scenario * (
+                    sum(self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * self.data.scenario[w]['sc'][t] for w in self.data.W) +
+                    sum(self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * (1 - self.data.scenario[w]['sc'][t]) for w in self.data.W)
+                )
                 for t in self.data.T
-                for w in self.data.W
-        }
-        self.results.expected_profit_imbalance = {
-            t: self.data.prob_scenario * (
-                sum(self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * self.data.scenario[w]['sc'][t] for w in self.data.W) +
-                sum(self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * (1 - self.data.scenario[w]['sc'][t]) for w in self.data.W)
-            )
-            for t in self.data.T
-        }
+            }
+        elif self.data.model_type == 'two_price':
+            self.results.profit_imbalance = {
+                (t,w): self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * self.data.scenario[w]['sc'][t]  +
+                    self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * (1 - self.data.scenario[w]['sc'][t])
+                    for t in self.data.T
+                    for w in self.data.W
+            }
+            self.results.expected_profit_imbalance = {
+                t: self.data.prob_scenario * (
+                    sum(self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * self.data.scenario[w]['sc'][t] for w in self.data.W) +
+                    sum(self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * (1 - self.data.scenario[w]['sc'][t]) for w in self.data.W)
+                )
+                for t in self.data.T
+            }
 
         self.results.expected_profit = {
             t: self.results.profit_da[t] + self.results.expected_profit_imbalance[t]
@@ -341,10 +357,14 @@ class RiskAverseExPostAnalysis:
     def run(self):
         # Makes sure the model is solved and saves the results
         try:
+            # self.model.setParam(gp.GRB.Param.DualReductions, 0)
             self.model.optimize()
+            print(f"Model status code: {self.model.status}")
+
             self.model.write(f"{self.model_type}_model.lp")
             if self.model.status == gp.GRB.INFEASIBLE:
                 print("Model is infeasible; computing IIS")
+                self.model.computeIIS()
                 self.model.write("model.ilp")  # Writes an ILP file with the irreducible inconsistent set.
                 print("IIS written to model.ilp")
                 exit()

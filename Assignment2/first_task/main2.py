@@ -14,7 +14,7 @@ if __name__ == "__main__":
     input_data = InputData(T=T, W=W, scenario=scenarios, prob_scenario=prob_scenario, model_type=model_type)
     
     # 2. Run ExPostAnalysis for different beta values
-    beta_values = np.linspace(0, 1, 30) 
+    beta_values = np.array([0, 0.2, 0.4, 0.6, 0.8, 0.85, 0.9, 1])#np.linspace(0, 1, 10) 
     results = []
     
     for beta in beta_values:
@@ -39,6 +39,20 @@ if __name__ == "__main__":
     # 3. Plot Expected Profit vs. CVaR
     plt.figure(figsize=(8, 6))
     plt.plot([res['cvar'] for res in results], [res['expected_profit'] for res in results], 'o-')
+    # Add text labels for each point
+    for i, (x, y, beta) in enumerate(zip([res['cvar'] for res in results],
+                                        [res['expected_profit'] for res in results],
+                                        beta_values)):
+        if i == 0:
+            # For the first point: above and centered
+            plt.text(x, y - 0.03, f"$\\beta = {beta:.2f}$", fontsize=10,
+                    ha='center', va='top')
+        else:
+            # For the rest: below and to the right
+            plt.text(x - 0.02, y - 0.02, f"$\\beta = {beta:.2f}$", fontsize=10,
+                    ha='right', va='top')
+
+
     plt.xlabel('Conditional Value at Risk (CVaR)')
     plt.ylabel('Expected Profit (€)')
     plt.title(f'Risk-Averse Offering Strategy ({model_type} scheme)')
@@ -47,12 +61,12 @@ if __name__ == "__main__":
     plt.tight_layout()
 
     # 4. Plot Profit Volatility vs. Beta
-    plt.figure(figsize=(8, 6))
-    plt.plot(beta_values, [res['profit_volatility'] for res in results], 'o-')
-    plt.xlabel('Risk Weight (Beta)')
-    plt.ylabel('Profit Volatility (Standard Deviation)')
-    plt.title(f'Profit Volatility vs. Risk Aversion ({model_type} scheme)')
-    plt.grid(True)
-    plt.savefig(f'first_task/output/figures/volatility_vs_beta_{model_type}.png')
-    plt.tight_layout()
+    # plt.figure(figsize=(8, 6))
+    # plt.plot(beta_values, [res['profit_volatility'] for res in results], 'o-')
+    # plt.xlabel('Risk Weight (Beta)')
+    # plt.ylabel('Profit Volatility (Standard Deviation)')
+    # plt.title(f'Profit Volatility vs. Risk Aversion ({model_type} scheme)')
+    # plt.grid(True)
+    # plt.savefig(f'first_task/output/figures/volatility_vs_beta_{model_type}.png')
+    # plt.tight_layout()
     plt.show()
