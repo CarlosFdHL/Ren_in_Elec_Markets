@@ -234,8 +234,10 @@ class RiskAverseExPostAnalysis:
             }
         elif self.data.model_type == 'two_price':
             self.results.profit_imbalance = {
-                (t,w): self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * self.data.scenario[w]['sc'][t]  +
-                    self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * (1 - self.data.scenario[w]['sc'][t])
+                (t,w): self.data.scenario[w]['sc'][t] * (self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t,w].X 
+                        - self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t,w].X)                                         # Profit from imbalance in case of system requiring upward balance
+                        + (1 - self.data.scenario[w]['sc'][t]) * (self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t,w].X 
+                        - self.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t,w].X)                                                                                # Profit from imbalance in case of system requiring downward balance
                     for t in self.data.T
                     for w in self.data.W
             }
