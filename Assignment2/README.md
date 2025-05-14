@@ -9,10 +9,8 @@ This repository contains implementations of optimal bidding strategies for elect
 ### Table of Contents
 1. [Project Description](#project-description)
 2. [Folder Structure](#folder-structure)
-3. [Key Features](#key-features)
-4. [Installation](#installation)
-5. [Usage](#usage)
-6. [Analysis Tools](#analysis-tools)
+3. [Usage](#usage)
+4. [Analysis Tools](#analysis-tools)
 
 ### Project Description
 This project implements mathematical optimization models for electricity producers to:
@@ -36,19 +34,6 @@ first_task/
 └── main.py # Main execution script
 ```
 
-### Key Features
-- Scenario-based stochastic optimization
-- Cross-validation framework for model evaluation
-- Risk management using Conditional Value-at-Risk (CVaR)
-- Comparative analysis between pricing schemes
-- Visualization of results and sensitivity analysis
-
-### Installation
-1. Clone the repository
-2. Install required packages:
-   ```
-    pip install -r requirements.txt
-    ```
 ### Usage
 For Tasks 1.1 and 1.2 run the main script with either pricing scheme:
 ```
