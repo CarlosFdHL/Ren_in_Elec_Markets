@@ -10,6 +10,12 @@ from .input_data import InputData
 from .model_one_price import OnePriceBiddingModel
 from .model_two_price import TwoPriceBiddingModel
 
+class Expando(object):
+    '''
+        A small class which can have attributes set
+    '''
+    pass
+
 class ExPostAnalysis:
     def __init__(self, input_data : InputData, beta = int, alpha = int, verbose: bool = True):
 
@@ -19,6 +25,10 @@ class ExPostAnalysis:
         self.beta = beta
         self.alpha = alpha
 
+        self.variables = Expando()
+        self.constraints = Expando()
+        self.results = Expando()
+        
         # Store the model class, not an instance
         if self.model_type == 'one_price':
             self.model_class = OnePriceBiddingModel
@@ -98,7 +108,7 @@ class ExPostAnalysis:
         if self.model_type == 'one_price':
             self.constraints.auxiliary_cvar = {
                 w: self.model.addConstr(self.variables.value_at_risk - 
-                                        self.data.prob_scenario * sum(self.data.scenario[w]['eprice'][t] * self.variables.production[t] + # Profit from production
+                                        self.data.prob_scenario * sum(self.data.scenario[w]['eprice'][t] * self.variables.production[t] +                                                                       # Profit from DA
                                                             self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w] * self.data.scenario[w]['sc'][t] +        # Profit from imbalance in case of system requiring upward balance
                                                             self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w] * (1 - self.data.scenario[w]['sc'][t])    # Profit from imbalance in case of system requiring downward balance
                                                         for t in self.data.T
@@ -112,7 +122,7 @@ class ExPostAnalysis:
         elif self.model_type == 'two_price':
             self.constraints.auxiliary_cvar = {
                 w: self.model.addConstr(self.variables.value_at_risk - 
-                                        self.data.prob_scenario * sum(self.data.scenario[w]['eprice'][t] * self.variables.production[t]                                                                         # Profit from production
+                                        self.data.prob_scenario * sum(self.data.scenario[w]['eprice'][t] * self.variables.production[t]                                                                         # Profit from DA
                                                         + self.data.scenario[w]['sc'][t] * (self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t,w] 
                                                                                             - self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t,w])   # Profit from imbalance in case of system requiring upward balance
                                                         + (1 - self.data.scenario[w]['sc'][t]) * (self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t,w] 

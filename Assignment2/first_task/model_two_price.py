@@ -174,14 +174,14 @@ class TwoPriceBiddingModel():
         }
         self.results.expected_profit_imbalance = {
             t: self.data.prob_scenario * (
-                gp.quicksum(self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * self.data.scenario[w]['sc'][t] for w in self.data.W) +
-                gp.quicksum(self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * (1 - self.data.scenario[w]['sc'][t]) for w in self.data.W)
+                sum(self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * self.data.scenario[w]['sc'][t] for w in self.data.W) +
+                sum(self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * (1 - self.data.scenario[w]['sc'][t]) for w in self.data.W)
             )
             for t in self.data.T
         }
 
         self.results.profit_per_scenario = {
-            w: gp.quicksum(self.data.scenario[w]['eprice'][t] * self.variables.production[t].X + self.results.profit_imbalance[t,w] for t in self.data.T)
+            w: sum(self.data.scenario[w]['eprice'][t] * self.variables.production[t].X + self.results.profit_imbalance[t,w] for t in self.data.T)
             for w in self.data.W
         }
 
@@ -240,10 +240,10 @@ class TwoPriceBiddingModel():
         expected_profit_imbalance_values = [self.results.expected_profit_imbalance[t] for t in self.data.T]
         profit_da_values = [self.results.profit_da[t] for t in self.data.T]
         total_profit = [expected_profit_imbalance_values[i] + profit_da_values[i] for i, _ in enumerate(profit_da_values)]
-        profit_per_scenario = [self.results.profit_per_scenario[w].getValue()for w in self.data.W]
+        profit_per_scenario = [self.results.profit_per_scenario[w] for w in self.data.W]
 
         # Plot configuration
-        ax.plot(self.data.T, profit_da_values, label='Profit from production', color='blue', marker = 'x', linestyle = '--')
+        ax.plot(self.data.T, profit_da_values, label='Profit DA', color='blue', marker = 'x', linestyle = '--')
         ax.plot(self.data.T, expected_profit_imbalance_values, label='Expected profit from imbalance', color='red', marker = 'o', linestyle='-.')
         ax.plot(self.data.T, total_profit, color = 'black', label = 'Total profit')
         ax.set_ylabel('Profit (€)')
@@ -262,14 +262,14 @@ class TwoPriceBiddingModel():
         cumulative_profit = np.cumsum(cumulative_profit)
 
         fig, ax = plt.subplots(1,2,figsize=(12,6))
-        ax[0].hist(profit_per_scenario, bins=30, alpha=0.75, color='blue', edgecolor='black')
-        ax[0].set_title('Profit Distribution')
+        ax[0].hist(profit_per_scenario, bins=100, alpha=0.75, color='blue', edgecolor='black')
+        # ax[0].set_title('Profit Distribution')
         ax[0].set_xlabel('Profit (€)')
-        ax[0].set_ylabel('Scenarios')
+        ax[0].set_ylabel('Frequency')
         ax[0].grid()
 
         ax[1].step(range(len(cumulative_profit)), cumulative_profit, where='mid')
-        ax[1].set_title('Cumulative Profit Distribution')
+        # ax[1].set_title('Cumulative Profit Distribution')
         ax[1].set_ylabel('Cumulative Profit (€)')
         ax[1].set_xlabel('Scenarios')
         ax[1].grid()
@@ -298,8 +298,141 @@ class TwoPriceBiddingModel():
                 raise TimeoutError("Gurobi optimization failed")       
         except gp.GurobiError as e:
             print(f"Error reported: {e}")
-            
 
+        
+    # def get_top_profit_scenarios_with_bids(self, top_n=5):
+    #     """
+    #     Versión corregida que maneja correctamente los objetos LinExpr de Gurobi
+    #     """
+    #     if not hasattr(self.results, 'profit_per_scenario'):
+    #         self.save_results()
+
+    #     top_scenarios = []
+    #     for w in self.data.W:
+    #         # Asegúrate de obtener el valor numérico del profit
+    #         profit_value = self.results.profit_per_scenario[w].getValue() if hasattr(
+    #             self.results.profit_per_scenario[w], 'getValue') else self.results.profit_per_scenario[w]
+            
+    #         scenario_data = {
+    #             'scenario_id': w,
+    #             'profit': profit_value,  # Usamos el valor numérico
+    #             'real_production': {t: self.data.scenario[w]['rp'][t] * self.data.p_nom 
+    #                             for t in self.data.T},
+    #             'bid': {t: self.results.production[t] for t in self.data.T},
+    #             'system_condition': self.data.scenario[w]['sc'],
+    #             'prices': self.data.scenario[w]['eprice']
+    #         }
+    #         top_scenarios.append(scenario_data)
+        
+    #     # Ordenar por profit descendente (ahora con valores numéricos)
+    #     top_scenarios.sort(key=lambda x: x['profit'], reverse=True)
+    #     return top_scenarios[:top_n]
+                
+    # def plot_top_scenarios_bids(self, top_n=3):
+    #     """Grafica bids vs producción real para los top_n escenarios"""
+    #     top_scenarios = self.get_top_profit_scenarios_with_bids(top_n)
+        
+    #     fig, axes = plt.subplots(top_n, 1, figsize=(12, 3*top_n))
+    #     if top_n == 1:
+    #         axes = [axes]  # Para manejar el caso de un solo subplot
+        
+    #     for idx, scenario in enumerate(top_scenarios):
+    #         ax = axes[idx]
+    #         hours = self.data.T
+    #         bid = [scenario['bid'][t] for t in hours]
+    #         real = [scenario['real_production'][t] for t in hours]
+            
+    #         ax.plot(hours, bid, 'b--o', label='Bid (Oferta DA)')
+    #         ax.plot(hours, real, 'r-x', label='Producción Real')
+    #         ax.fill_between(hours, bid, real, where=np.array(real) > np.array(bid),
+    #                     facecolor='red', alpha=0.3, label='Upward Imbalance')
+    #         ax.fill_between(hours, bid, real, where=np.array(real) <= np.array(bid),
+    #                     facecolor='blue', alpha=0.3, label='Downward Imbalance')
+            
+    #         ax.set_title(f"Escenario {scenario['scenario_id']} - Profit: {scenario['profit']:.2f}€")
+    #         ax.set_xlabel('Hora')
+    #         ax.set_ylabel('MW')
+    #         ax.legend()
+    #         ax.grid(True)
+        
+    #     plt.tight_layout()
+
+
+    # def get_mid_profit_scenarios_with_bids(self, num_scenarios=3):
+    #     """
+    #     Devuelve los escenarios que se encuentran en la mediana de profits
+    #     Args:
+    #         num_scenarios: Número de escenarios a retornar (por defecto 3)
+    #     Returns:
+    #         Lista de diccionarios con los mismos campos que get_top_profit_scenarios_with_bids
+    #     """
+    #     if not hasattr(self.results, 'profit_per_scenario'):
+    #         self.save_results()
+
+    #     # Obtener todos los escenarios con sus profits numéricos
+    #     all_scenarios = []
+    #     for w in self.data.W:
+    #         profit_value = self.results.profit_per_scenario[w].getValue() if hasattr(
+    #             self.results.profit_per_scenario[w], 'getValue') else self.results.profit_per_scenario[w]
+            
+    #         scenario_data = {
+    #             'scenario_id': w,
+    #             'profit': profit_value,
+    #             'real_production': {t: self.data.scenario[w]['rp'][t] * self.data.p_nom 
+    #                             for t in self.data.T},
+    #             'bid': {t: self.results.production[t] for t in self.data.T},
+    #             'system_condition': self.data.scenario[w]['sc'],
+    #             'prices': self.data.scenario[w]['eprice']
+    #         }
+    #         all_scenarios.append(scenario_data)
+        
+    #     # Ordenar por profit
+    #     all_scenarios.sort(key=lambda x: x['profit'])
+        
+    #     # Calcular índices de los escenarios medios
+    #     total = len(all_scenarios)
+    #     start_idx = max((total - num_scenarios) // 2, 0)
+    #     mid_scenarios = all_scenarios[start_idx : start_idx + num_scenarios]
+        
+    #     return mid_scenarios
+
+    # def plot_comparative_scenarios(self, num_scenarios=3):
+    #     """Grafica comparativa entre top, medios y peores escenarios"""
+    #     top = self.get_top_profit_scenarios_with_bids(num_scenarios)
+    #     mid = self.get_mid_profit_scenarios_with_bids(num_scenarios)
+    #     low = self.get_top_profit_scenarios_with_bids(num_scenarios)[::-1]  # Invertir para obtener los peores
+        
+    #     fig, axes = plt.subplots(3, 1, figsize=(12, 9))
+        
+    #     # Configurar gráficos
+    #     for idx, (scenarios, title) in enumerate(zip(
+    #         [top, mid, low],
+    #         ["Mejores Escenarios", "Escenarios Intermedios", "Peores Escenarios"]
+    #     )):
+    #         ax = axes[idx]
+    #         for scen in scenarios:
+    #             hours = self.data.T
+    #             bid = [scen['bid'][t] for t in hours]
+    #             real = [scen['real_production'][t] for t in hours]
+                
+    #             ax.plot(hours, bid, 'b--o', label='Bid (Oferta DA)')
+    #             ax.plot(hours, real, 'r-x', label='Producción Real')
+    #             ax.fill_between(hours, bid, real, where=np.array(real) > np.array(bid),
+    #                         facecolor='red', alpha=0.3)
+    #             ax.fill_between(hours, bid, real, where=np.array(real) <= np.array(bid),
+    #                         facecolor='blue', alpha=0.3)
+                
+    #             ax.set_title(f"{title} - Escenario {scen['scenario_id']} (Profit: {scen['profit']:.2f}€)")
+    #             ax.set_xlabel('Hora')
+    #             ax.set_ylabel('MW')
+    #             ax.grid(True)
+            
+    #         # Evitar leyendas duplicadas
+    #         if idx == 0:
+    #             ax.legend(['Bid', 'Real', 'Up Imb', 'Down Imb'])
+        
+    #     plt.tight_layout()
+    #     plt.show()
 
 
     

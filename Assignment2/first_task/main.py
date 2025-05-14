@@ -26,12 +26,47 @@ if __name__ == "__main__":
     # --------------------------------------------------------------------------------
     # Run only one of the models at a time:
 
-    # input_data = InputData(T, W, scenarios, prob_scenario, model_type=model_type)
-    # model = model_class(input_data)
-    # model.run()
-    # model.print_results()
-    # model.plot()
-    
+    input_data = InputData(T, W, scenarios, prob_scenario, model_type=model_type)
+    model = model_class(input_data)
+    model.run()
+    model.print_results()
+    model.plot()
+
+
+
+
+    # # Compare top scenarios with bids               # DELETE
+    # # Imprimir resultados
+    # top_scenarios = model.get_top_profit_scenarios_with_bids(3)
+    # for scen in top_scenarios:
+    #     print(f"\nEscenario {scen['scenario_id']} (Profit: {scen['profit']:.2f}€):")
+    #     print("Hora | Bid (MW) | Real (MW) | Precio (€/MWh) | Cond.Sist.")
+    #     for t in model.data.T:
+    #         print(f"{t:4} | {scen['bid'][t]:7.2f} | {scen['real_production'][t]:8.2f} | "
+    #             f"{scen['prices'][t]:13.2f} | {scen['system_condition'][t]}")
+            
+    # # Obtener escenarios medios
+    # mid_scenarios = model.get_mid_profit_scenarios_with_bids(3)
+
+    # # Mostrar datos en consola
+    # print("\nEscenarios con profit medio:")
+    # for scen in mid_scenarios:
+    #     print(f"\nEscenario {scen['scenario_id']}: Profit = {scen['profit']:.2f}€")
+    #     print("Hora | Bid (MW) | Real (MW) | Precio (€/MWh) | Cond.Sist.")
+    #     for t in model.data.T:
+    #         print(f"{t:4} | {scen['bid'][t]:7.2f} | {scen['real_production'][t]:8.2f} | "
+    #             f"{scen['prices'][t]:13.2f} | {scen['system_condition'][t]}")
+
+    # # Graficar comparativa completa
+    # model.plot_comparative_scenarios(3)
+    ##################################################
+
+
+
+
+
+
+
     #
     # Run both models and compare the results:
     #
@@ -39,7 +74,7 @@ if __name__ == "__main__":
     # input_data = InputData(T, W, scenarios, prob_scenario, model_type = 'one_price')
     # model_one_price = OnePriceBiddingModel(input_data)
     # model_one_price.run()
-    
+
     # input_data = InputData(T, W, scenarios, prob_scenario, model_type = 'two_price')
     # model_two_price = TwoPriceBiddingModel(input_data)
     # model_two_price.run() 

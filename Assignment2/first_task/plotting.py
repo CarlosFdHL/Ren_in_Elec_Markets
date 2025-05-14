@@ -22,9 +22,9 @@ def plot_comparison_bids(one_price_model, two_price_model):
     # Plot configuration
     ax.plot(one_price_model.data.T, p_one_price, label='One Price Scheme', color='blue', marker = 'x', linestyle = '--')
     ax.plot(one_price_model.data.T, p_two_price, label='Two Price Scheme', color='orange', marker = 'o', linestyle='-.')
-    ax.plot(real_prod_one_price, label='Real Production', color='black', linestyle = '-')
+    ax.plot(real_prod_one_price, label='Expected real production', color='black', linestyle = '-')
     ax.grid()
     ax.legend()
     ax.set_xlabel('Time (h)')
-    ax.set_ylabel('Production (MW)')
+    ax.set_ylabel('Power bidded in DA market (MW)')
     plt.tight_layout()

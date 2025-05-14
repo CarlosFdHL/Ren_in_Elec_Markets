@@ -79,3 +79,6 @@ python -m first_task.risk_analysis two_price
   - `alpha`: Confidence level (e.g., 0.95)
   - `beta`: Risk aversion coefficient (0-1)
 
+
+## Second Task
+
