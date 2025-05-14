@@ -24,6 +24,7 @@ This project implements mathematical optimization models for electricity produce
 The models are implemented using Gurobi optimization solver and Python.
 
 ### Folder Structure
+```
 first_task/
 ├── input_data.py # Data loading and scenario generation
 ├── model_one_price.py # One-price imbalance scheme model
@@ -33,7 +34,7 @@ first_task/
 ├── sensitivity_expost.py # Sensitivity analysis tools
 ├── plotting.py # Visualization functions
 └── main.py # Main execution script
-
+```
 
 ### Key Features
 - Scenario-based stochastic optimization
