@@ -65,20 +65,17 @@ python -m first_task.risk_analysis two_price
 - Compares in-sample vs out-of-sample profits
 - Calculates expected imbalances and profits
 
-#### Risk Analysis
-- Incorporates Conditional Value-at-Risk (CVaR)
-
-- Allows risk-averse optimization
-
-- Adjustable risk parameters:
-
-*  alpha: Confidence level (e.g., 0.95)
-
-*  beta: Risk aversion coefficient (0-1)
-
 ### Sensitivity Analysis
 - Tests model performance with different in-sample sizes
 
 - Evaluates stability of results
 
 - Produces visualizations of sensitivity
+
+#### Risk Analysis
+- Incorporates Conditional Value-at-Risk (CVaR)
+- Allows risk-averse optimization
+- Adjustable risk parameters:
+  - `alpha`: Confidence level (e.g., 0.95)
+  - `beta`: Risk aversion coefficient (0-1)
+
