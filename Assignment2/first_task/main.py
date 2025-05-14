@@ -21,29 +21,43 @@ if __name__ == "__main__":
     else:
         raise ValueError("Invalid model type. Use 'one_price' or 'two_price'.")
 
-    #input_data = InputData(T, W, scenarios, prob_scenario)
-    #model = model_class(input_data)
-    #model.run()
-    #model.print_results()
-    #model.plot()
-    
-    #plot_comparison_bids(model_one_price, model_two_price)
-    # Create an instance of ImputData
-    #input_data = InputData(T, W, scenarios, prob_scenario)
-    #model_one_price = OnePriceBiddingModel(input_data)
-    #model_one_price.run()
-    #model_one_price.print_results()
-    #model_one_price.plot()
+    # --------------------------------------------------------------------------------
+    #                    1st and 2nd Task - One and Two Price Bidding
+    # --------------------------------------------------------------------------------
+    # Run only one of the models at a time:
 
+    # input_data = InputData(T, W, scenarios, prob_scenario, model_type=model_type)
+    # model = model_class(input_data)
+    # model.run()
+    # model.print_results()
+    # model.plot()
+    
+    #
+    # Run both models and compare the results:
+    #
+    
+    # input_data = InputData(T, W, scenarios, prob_scenario, model_type = 'one_price')
+    # model_one_price = OnePriceBiddingModel(input_data)
+    # model_one_price.run()
+    
+    # input_data = InputData(T, W, scenarios, prob_scenario, model_type = 'two_price')
     # model_two_price = TwoPriceBiddingModel(input_data)
     # model_two_price.run() 
-    # model_two_price.print_results()
-    # model_two_price.plot()
+    
+    # plot_comparison_bids(model_one_price, model_two_price)
 
+    # --------------------------------------------------------------------------------
+    #                           3rd Task - Expost Analysis 
+    # --------------------------------------------------------------------------------
+    #
+    # Run only expost analysis on the specified model type:
 
-    # Ex-post analysis
-    model_expost = ExPostAnalysis(timeSpan=T, scenarios=cv_scenarios, model_type=model_type, verbose=True)
-    cv_results = model_expost.cross_validation(K = 8)
+    # model_expost = ExPostAnalysis(timeSpan=T, scenarios=cv_scenarios, model_type=model_type, verbose=True)
+    # cv_results = model_expost.cross_validation(K = 8)
+
+    # In order to run the CV analysis run: python -m first_task.sensitivity_expost one_price/two_price
+
+    # Show generated plots
     plt.show()
 
     print("\nEnd of main.py\n")

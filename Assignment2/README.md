@@ -12,11 +12,7 @@ This repository contains implementations of optimal bidding strategies for elect
 3. [Key Features](#key-features)
 4. [Installation](#installation)
 5. [Usage](#usage)
-6. [Models](#models)
-7. [Analysis Tools](#analysis-tools)
-8. [Data Requirements](#data-requirements)
-9. [Results](#results)
-10. [License](#license)
+6. [Analysis Tools](#analysis-tools)
 
 ### Project Description
 This project implements mathematical optimization models for electricity producers to:
@@ -53,10 +49,27 @@ first_task/
     pip install -r requirements.txt
     ```
 ### Usage
-Run the main script with either pricing scheme:
+For Tasks 1.1 and 1.2 run the main script with either pricing scheme:
 ```
-python main.py one_price
-python main.py two_price
+python -m first_task.main one_price
+python -m first_task.main two_price
+```
+In order to plot a comparison between the one price and two price schemes you also need to specify a valid model, although it will not be considered at the moment of running the program. 
+
+For Task 1.3, in case you want to run only expost analysis for one of the price schemes you need to uncoment the specified block of code on 'main.py' and run specifying the price scheme:
+```
+python -m first_task.main one_price
+python -m first_task.main two_price
+```
+For Task 1.3, to run the sensitivity analysis on the insample size run specifying the price scheme:
+```
+python -m first_task.sensitivity_expost one_price
+python -m first_task.sensitivity_expost two_price
+```
+For Task 1.4 run also specifying the price scheme
+```
+python -m first_task.risk_analysis one_price
+python -m first_task.risk_analysis two_price
 ```
 
 ### Analysis Tools
