@@ -226,12 +226,10 @@ class RiskAverseExPostAnalysis:
                     for w in self.data.W
             }
             self.results.expected_profit_imbalance = {
-                t: self.data.prob_scenario * (
-                    sum(self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * self.data.scenario[w]['sc'][t] for w in self.data.W) +
-                    sum(self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * (1 - self.data.scenario[w]['sc'][t]) for w in self.data.W)
-                )
-                for t in self.data.T
+                t: self.data.prob_scenario * (sum(self.results.profit_imbalance[t,w] for w in self.data.W))
+                for t in self.data.T    
             }
+
         elif self.data.model_type == 'two_price':
             self.results.profit_imbalance = {
                 (t,w): self.data.scenario[w]['sc'][t] * (self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t,w].X 
@@ -242,10 +240,7 @@ class RiskAverseExPostAnalysis:
                     for w in self.data.W
             }
             self.results.expected_profit_imbalance = {
-                t: self.data.prob_scenario * (
-                    sum(self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * self.data.scenario[w]['sc'][t] for w in self.data.W) +
-                    sum(self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w].X * (1 - self.data.scenario[w]['sc'][t]) for w in self.data.W)
-                )
+                t: self.data.prob_scenario * (sum(self.results.profit_imbalance[t,w] for w in self.data.W))
                 for t in self.data.T
             }
 
@@ -338,19 +333,13 @@ class RiskAverseExPostAnalysis:
         # Acumulate profit
         cumulative_profit = np.cumsum(cumulative_profit)
 
-        fig, ax = plt.subplots(1,2,figsize=(12, 6))
+        fig, ax = plt.subplots(figsize=(12, 6))
 
-        ax[0].hist(profit_per_scenario, bins=30, alpha=0.75, color='blue', edgecolor='black')
-        ax[0].set_title('Profit Distribution')
-        ax[0].set_xlabel('Profit (€)')
-        ax[0].set_ylabel('Scenarios')
-        ax[0].grid()
-
-        ax[1].step(range(len(cumulative_profit)), cumulative_profit, where='mid')
-        ax[1].set_title('Cumulative Profit Distribution')
-        ax[1].set_ylabel('Cumulative Profit (€)')
-        ax[1].set_xlabel('Scenarios')
-        ax[1].grid()
+        ax.hist(profit_per_scenario, bins=30, alpha=0.75, color='blue', edgecolor='black')
+        ax.set_title('Profit Distribution')
+        ax.set_xlabel('Profit (€)')
+        ax.set_ylabel('Scenarios')
+        ax.grid()
         plt.tight_layout()
 
         
