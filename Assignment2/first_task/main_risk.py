@@ -19,7 +19,8 @@ if __name__ == "__main__":
     input_data = InputData(T=T, W=W, scenario=scenarios, prob_scenario=prob_scenario, model_type=model_type)
     
     # 2. Run ExPostAnalysis for different beta values
-    beta_values = np.array([0, 0.2, 0.4, 0.5, 0.6, 0.8, 0.85, 0.9, 1])
+    # beta_values = np.array([0, 0.2, 0.4, 0.5, 0.6, 0.7, 0.8, 0.83, 0.85, 0.9, 0.93, 0.95, 0.98, 1])
+    beta_values = np.linspace(0, 1, 101)  
     results = []
     
     for beta in beta_values:
@@ -33,7 +34,7 @@ if __name__ == "__main__":
         )
         model.run()
         
-        profit_per_scenario = [model.results.profit_per_scenario[w].getValue() for w in model.data.W]
+        profit_per_scenario = [model.results.profit_per_scenario[w].getValue()for w in model.data.W]
         power_bidded = [model.results.production[t] for t in model.data.T]
         
         # Store results
@@ -43,6 +44,7 @@ if __name__ == "__main__":
             'cvar': model.results.cvar,
             'profit_per_scenario': profit_per_scenario,
             'power_bidded': power_bidded,
+            'total_expected_profit': model.results.total_expected_profit,
         })
     
     # 3. Plot Expected Profit vs. CVaR
@@ -54,7 +56,7 @@ if __name__ == "__main__":
         x = results[i]['cvar']
         y = results[i]['expected_profit']
         beta = beta_values[i]
-        plt.text(x, y, f"$\\beta = {beta:.2f}$", fontsize=9, ha='left', va='bottom', alpha=0.8)
+        # plt.text(x, y, f"$\\beta = {beta:.2f}$", fontsize=9, ha='left', va='bottom', alpha=0.8)
 
     plt.xlabel('Conditional Value at Risk (CVaR)', fontsize=9)
     plt.ylabel('Expected Profit (€)', fontsize=9)
@@ -62,10 +64,12 @@ if __name__ == "__main__":
     plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0)) 
     plt.grid(True, linestyle='--', alpha=0.7)
     plt.tight_layout()
+    plt.show()
 
     # 4. Plot Profit Volatility vs. Beta
+
     plt.figure(figsize=(8, 6))
-    plt.plot(beta_values, [res['expected_profit'] for res in results], '-')
+    plt.plot(beta_values, [res['total_expected_profit'] for res in results], '-')
     plt.xlabel('Risk Weight (Beta)')
     plt.ylabel('Total Expected Profit (€)')
     plt.grid(True)
@@ -85,7 +89,7 @@ if __name__ == "__main__":
     ax[0].grid()
     ax[0].set_xlabel('Profit per Scenario (€)')
     ax[0].set_ylabel('Frequency')
-    ax[1].plot(beta_values, [res['expected_profit'] for res in results], '-')
+    ax[1].plot(beta_values, [res['total_expected_profit'] for res in results], '-')
     ax[1].set_xlabel('Risk Weight (Beta)')
     ax[1].set_ylabel('Total Expected Profit (€)')
     ax[1].grid()
@@ -94,6 +98,7 @@ if __name__ == "__main__":
 
 
     # Plot bids for different insample sizes with beta = 0.5
+    
     beta = 0.5
     sample_sizes = [100, 200, 300, 400, 500]
     bids_dict = {}
