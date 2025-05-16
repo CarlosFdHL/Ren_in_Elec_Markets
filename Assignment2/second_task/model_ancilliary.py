@@ -274,6 +274,11 @@ class AncilliaryServiceBiddingModel():
             # Objective function
             model.setObjective(bid_capacity, GRB.MAXIMIZE)
 
+            self.model.update()
+            if self.verbose:
+                print(f"Number of variables: {self.model.NumVars}")
+                print(f"Number of constraints: {self.model.NumConstrs}")
+
             # Solve the model
             model.optimize()
 
