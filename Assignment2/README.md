@@ -41,6 +41,7 @@ first_task/
 ├── sensitivity_expost.py # Sensitivity analysis tools
 ├── plotting.py # Visualization functions
 └── main.py # Main execution script
+└── main_risk.py # Task 1.4 execution script
 ```
 
 ### Usage
@@ -61,10 +62,10 @@ For Task 1.3, to run the sensitivity analysis on the insample size run specifyin
 python -m first_task.sensitivity_expost one_price
 python -m first_task.sensitivity_expost two_price
 ```
-For Task 1.4 run also specifying the price scheme
+For Task 1.4 run the main_risk script with either pricing scheme:
 ```
-python -m first_task.risk_analysis one_price
-python -m first_task.risk_analysis two_price
+python -m first_task.main_risk one_price
+python -m first_task.main_risk two_price
 ```
 
 ### Analysis Tools
