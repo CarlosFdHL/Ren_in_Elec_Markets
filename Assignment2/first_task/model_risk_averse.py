@@ -352,11 +352,11 @@ class RiskAverseExPostAnalysis:
             self.model.optimize()
             print(f"Model status code: {self.model.status}")
 
-            self.model.write(f"{self.model_type}_model.lp")
+            self.model.write("first_task/output/verification/risk_analysis/model.lp")
             if self.model.status == gp.GRB.INFEASIBLE:
                 print("Model is infeasible; computing IIS")
                 self.model.computeIIS()
-                self.model.write("model.ilp")  # Writes an ILP file with the irreducible inconsistent set.
+                self.model.write("first_task/output/verification/risk_analysis/model.ilp")  # Writes an ILP file with the irreducible inconsistent set.
                 print("IIS written to model.ilp")
                 exit()
             elif self.model.status == gp.GRB.UNBOUNDED:
