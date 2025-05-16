@@ -53,7 +53,7 @@ class RiskAverseExPostAnalysis:
         }
 
         # Value at risk
-        self.variables.value_at_risk = self.model.addVar(lb = 0, name=f"ValueAtRisk")
+        self.variables.value_at_risk = self.model.addVar(name=f"ValueAtRisk")
 
         # Auxiliary CVaR variable
         self.variables.auxiliary_cvar = {
@@ -118,7 +118,6 @@ class RiskAverseExPostAnalysis:
                     ),                                                                                  # <-- End profit calculation
                     GRB.LESS_EQUAL,
                     self.variables.auxiliary_cvar[w],
-
                     name=f"AuxiliaryCVaR_{w}"
                 )
                 for w in self.data.W

@@ -28,9 +28,6 @@ if __name__ == "__main__":
     model_cvar.print_results()
     model_cvar.verify_p90_out_of_sample()
 
-    # model = AncilliaryServiceBiddingModelPyomo(input_data, verbose = True, solver = 'highs')
-    # bids, violations, violation_count = model.run()
-    # print("Bids:", bids)
     end_time = time.time()  # End timer
     elapsed_time = end_time - start_time  # Calculate elapsed time
 

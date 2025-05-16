@@ -72,15 +72,6 @@ for file in files_rp_30:
 
     w_count += 1
 
-
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# fig, ax = plt.subplots()
-# for w in range(1,w_count):
-#     ax.plot(rp_scenarios[w].keys(), rp_scenarios[w].values(), label=f'Scenario {w+1}')
-# plt.show()
-# System condition scenarios
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 sc_scenarios = {}
 system_condition_scenarios = pd.read_csv(path_system_cond, sep=',')
 num_rows = system_condition_scenarios.shape[0]
@@ -135,9 +126,7 @@ prob_scenario = 1/len(scenarios)  # Probability of each scenario
 # Ex-post analysis scenarios
 expost_combinations = [index for index in all_combinations if index not in sampled_combinations]
 
-#expost_combinations = random.sample(expost_combinations, 1400) # Adjust this number as needed
-
-# Crear un diccionario con los escenarios no utilizados
+# Create a dictionary with the scenarios for the ex-post analysis
 expost_scenarios = {i+1: {
     'rp': rp_scenarios[rp_index],
     'sc': sc_scenarios[sc_index],
@@ -146,6 +135,6 @@ expost_scenarios = {i+1: {
 
 W_expost = list(expost_scenarios.keys())
 
-negative_price_count = 0
+# negative_price_count = 0
 
 # --------------------------------------------------------------------------------

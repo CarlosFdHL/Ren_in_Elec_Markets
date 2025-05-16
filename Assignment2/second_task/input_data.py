@@ -1,8 +1,6 @@
 import numpy as np
 import pandas as pd
 import os
-import glob
-import itertools
 import random
 random.seed(5) # Use a fixed seed for reproducibility
 
@@ -41,6 +39,7 @@ class InputData:
         self.epsilon_requirement = epsilon_requirement
 
         self.max_violated_scenarios = epsilon_requirement * len(self.W) * len(self.M) # Maximum number of violations
+
 # PATHS
 script_dir = os.path.dirname(__file__)
 
