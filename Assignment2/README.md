@@ -37,7 +37,7 @@ first_task/
 ├── model_one_price.py # One-price imbalance scheme model
 ├── model_two_price.py # Two-price imbalance scheme model
 ├── expost_analysis.py # Cross-validation and out-of-sample testing
-├── risk_analysis.py # Risk-averse optimization with CVaR
+├── model_risk_averse.py # Risk-averse optimization with CVaR
 ├── sensitivity_expost.py # Sensitivity analysis tools
 ├── plotting.py # Visualization functions
 └── main.py # Main execution script
