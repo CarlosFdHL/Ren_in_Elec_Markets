@@ -33,15 +33,15 @@ The models are implemented using Gurobi optimization solver and Python.
 ### Folder Structure
 ```
 first_task/
-├── input_data.py # Data loading and scenario generation
-├── model_one_price.py # One-price imbalance scheme model
-├── model_two_price.py # Two-price imbalance scheme model
-├── expost_analysis.py # Cross-validation and out-of-sample testing
-├── model_risk_averse.py # Risk-averse optimization with CVaR
-├── sensitivity_expost.py # Sensitivity analysis tools
-├── plotting.py # Visualization functions
-└── main.py # Main execution script
-└── main_risk.py # Task 1.4 execution script
+├── input_data.py                  # Data loading and scenario generation
+├── model_one_price.py             # One-price imbalance scheme model
+├── model_two_price.py             # Two-price imbalance scheme model
+├── expost_analysis.py             # Cross-validation and out-of-sample testing
+├── model_risk_averse.py           # Risk-averse optimization with CVaR
+├── sensitivity_expost.py          # Sensitivity analysis tools
+├── plotting.py                    # Visualization functions
+└── main.py                        # Main execution script
+└── main_risk.py                   # Task 1.4 execution script
 ```
 
 ### Usage
