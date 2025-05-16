@@ -5,7 +5,7 @@ This repository contains the code for Assignment 2 of the “Renewables in Elect
 
 First Task: Optimal day-ahead and balancing-market bidding for a price-taking wind farm under one-price and two-price imbalance settlement schemes, including ex-post validation, sensitivity analysis, and risk-averse CVaR optimization.
 
-Second Task: Bidding stochastic flexible-load capacity into the FCR-D UP ancillary service market under a P90 availability requirement, using ALSO-X and CVaR approximation methods, plus a sensitivity study on the P90 level.
+Second Task: Bidding stochastic flexible-load capacity into the FCR-D UP ancillary service market under a P90 availability requirement, using ALSO-X and CVaR methods, plus a sensitivity study on the P90 level.
 
 ## First Task
 
@@ -87,7 +87,7 @@ python -m first_task.risk_analysis two_price
 
 
 ## Second Task
-This part, included in the repository, addresses bidding stochastic flexible‐load capacity into the FCR-D UP ancillary service market under a P90 availability requirement. We implement two chance-constrained methods (ALSO-X and CVaR approximation) and a P90 sensitivity analysis.
+This part, included in the repository, addresses bidding stochastic flexible‐load capacity into the FCR-D UP ancillary service market under a P90 availability requirement. We implement two chance-constrained methods (ALSO-X and CVaR) and a P90 sensitivity analysis.
 
 
 ### Table of Contents
@@ -99,12 +99,12 @@ This part, included in the repository, addresses bidding stochastic flexible‐l
 ### Project Description
 In the second task, it implements a flexible load in a minute-level consumption between 220kW and 600kW, considering:
 * The scenarios:
-    -1oo in-sample profiles for determining the bid 
+    -100 in-sample profiles for determining the bid 
     -200 out-of-sample profiles
 * P90 Requirement that needs to be less or equal than 10% of the minutes that can have a shortfall 
 * Two methods were used:
     -ALSO-X (model_ancilliary.py): MILP + LP relaxation and bisection for in-sample P90.
-    -CVar (model_ancilliary_cvar.py): LP controlling expected shortfall for P90.
+    -CVaR (model_ancilliary_cvar.py): LP controlling expected shortfall for P90.
 *Sensitivity (sensitivity_2_3.py): varying ϵ from 0.00 (P100) to 0.20 (P80), quantifying the trade-off between offered capacity and expected shortfall.
 
 
