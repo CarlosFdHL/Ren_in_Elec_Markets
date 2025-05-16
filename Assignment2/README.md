@@ -130,7 +130,7 @@ For Tasks 2.1 ( ALSO-X solve CVaR ) solvers and Taskt 2.2 ( P90 verification ) r
 ```
 python -m second_task.main
 ```
-For Tasks 2.3 run the main script:
+For Tasks 2.3 run the script:
 ```
 python -m second_task.sensitivity_2_3
 ```
