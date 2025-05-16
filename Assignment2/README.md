@@ -103,8 +103,8 @@ In the second task, it implements a flexible load in a minute-level consumption 
     -200 out-of-sample profiles
 * P90 Requirement that needs to be less or equal than 10% of the minutes that can have a shortfall 
 * Two methods were used:
-    -ALSO-X (model_ancilliary.py): MILP + LP relaxation and bisection for in-sample P90.
-    -CVaR (model_ancilliary_cvar.py): LP controlling expected shortfall for P90.
+  -ALSO-X (model_ancilliary.py): MILP + LP relaxation and bisection for in-sample P90.
+  -CVaR (model_ancilliary_cvar.py): LP controlling expected shortfall for P90.
 *Sensitivity (sensitivity_2_3.py): varying ϵ from 0.00 (P100) to 0.20 (P80), quantifying the trade-off between offered capacity and expected shortfall.
 
 
@@ -122,23 +122,23 @@ second_task/
 ```
 
 ### Usage
-For Tasks 2.1 ( ALSO-X per-hour solve + P90 verification) and 2.2 (CVaR solve + P90 verification) run the main script:
+For Tasks 2.1 ( ALSO-X solve CVaR ) solvers and Taskt 2.2 ( P90 verification ) run the main script:
 ```
-python -m main
+python -m second_task.main
 ```
 For Tasks 2.3 run the main script:
 ```
-python -m sensitivity_2_3
+python -m second_task.sensitivity_2_3
 ```
 
 ### Analysis Tools
 #### P90 Verification
-  -verify_p90_out_of_sample() in both models
-  -Checks fraction of minutes bid ≥ actual consumption, ensures ≥ P90
+-verify_p90_out_of_sample() in both models
+-Checks fraction of minutes bid ≥ actual consumption, ensures ≥ P90
   
 #### P90 Sensitivity
-  -Varies ε (0.00→0.20)
-  -Plots in-sample bid vs. out-of-sample expected shortfall
+-Varies ε (0.00→0.20)
+-Plots in-sample bid vs. out-of-sample expected shortfall
 
 
 
