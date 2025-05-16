@@ -12003,7 +12003,7 @@ Subject To
    - zeta_Hour0_Minute59_Scenario98 <= 487.5434097349218
  capacity_limit_Hour0_Minute59_Scenario99: bid_capacity_Hour0
    - zeta_Hour0_Minute59_Scenario99 <= 394.8128126778318
- violation_limit: - 0.9 beta_Hour0
+ violation_limit: - beta_Hour0
    + 1.6666666666666666e-04 zeta_Hour0_Minute0_Scenario0
    + 1.6666666666666666e-04 zeta_Hour0_Minute0_Scenario1
    + 1.6666666666666666e-04 zeta_Hour0_Minute0_Scenario2

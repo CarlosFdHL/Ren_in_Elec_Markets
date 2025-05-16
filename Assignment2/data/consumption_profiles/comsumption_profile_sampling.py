@@ -21,7 +21,7 @@ def generate_profile():
     return profile
 
 # Generate profiles
-np.random.seed(42)
+np.random.seed(2)
 all_profiles = np.array([generate_profile() for _ in range(num_profiles)])
 in_sample_indices = np.random.choice(num_profiles, in_sample_count, replace=False)
 in_sample_profiles = all_profiles[in_sample_indices]
@@ -29,10 +29,10 @@ out_sample_profiles = np.delete(all_profiles, in_sample_indices, axis=0)
 
 # Save profiles to CSV
 df_in_sample = pd.DataFrame(in_sample_profiles)
-df_in_sample.to_csv("in_sample_profiles.csv", index=False)
+df_in_sample.to_csv("data/consumption_profiles/in_sample_profiles2.csv", index=False)
 
 df_out_sample = pd.DataFrame(out_sample_profiles)
-df_out_sample.to_csv("out_sample_profiles.csv", index=False)
+df_out_sample.to_csv("data/consumption_profiles/out_sample_profiles2.csv", index=False)
 
 # Generate heatmap data function
 def create_heatmap_data(profiles, resolution_kw=10):

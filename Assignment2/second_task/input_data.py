@@ -23,14 +23,16 @@ class InputData:
         self.n_insample_scenarios = len(set([k[1] for k in insample_scenarios.keys()])) # Number of insample scenarios
         self.prob_scenarios_insample = prob_scenarios_insample
 
-        self.out_of_sample_scenarios = out_of_sample_scenarios
-        self.n_out_of_sample_scenarios = len(set([k[1] for k in out_of_sample_scenarios.keys()]))
+        self.outsample_scenarios = out_of_sample_scenarios
+        self.n_outsample_scenarios = len(set([k[1] for k in out_of_sample_scenarios.keys()]))
         self.prob_scenarios_outsample = prob_scenarios_outsample
 
         # Set definitions
         self.M = [i for i in range(0,60)] # Minutes in 1 hour
         self.W = [i for i in range(0,self.n_insample_scenarios)] # Number of insample scenarios
         self.H = [i for i in range(0,num_hours)] # Number of hours
+
+        self.W_outsample = [i for i in range(0,self.n_outsample_scenarios)] # Number of out-of-sample scenarios
 
         self.num_hours = num_hours
         
@@ -42,17 +44,17 @@ class InputData:
 # PATHS
 script_dir = os.path.dirname(__file__)
 
-insample_dir = os.path.join(script_dir, '../data/consumption_profiles/in_sample_profiles.csv')
+insample_dir = os.path.join(script_dir, '../data/consumption_profiles/in_sample_profiles2.csv')
 in_sample_profiles = pd.read_csv(insample_dir, sep=',')
 insample_scenarios = {
     (m, w): in_sample_profiles.iloc[w, m]
     for w in range(in_sample_profiles.shape[0])  # Number of rows (scenarios)
     for m in range(in_sample_profiles.shape[1])  # Number of columns (minutes)
 }
-out_of_sample_dir = os.path.join(script_dir, '../data/consumption_profiles/out_sample_profiles.csv')
+out_of_sample_dir = os.path.join(script_dir, '../data/consumption_profiles/out_sample_profiles2.csv')
 out_of_sample_profiles = pd.read_csv(out_of_sample_dir, sep=',')
 out_of_sample_scenarios = {
-    (m, w + 1): out_of_sample_profiles.iloc[w, m]
+    (m, w): out_of_sample_profiles.iloc[w, m]
     for w in range(out_of_sample_profiles.shape[0])  # Number of rows (scenarios)
     for m in range(out_of_sample_profiles.shape[1])  # Number of columns (minutes)
 }

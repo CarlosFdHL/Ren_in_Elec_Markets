@@ -107,7 +107,7 @@ class AncilliaryServiceBiddingModelCVAR():
         if self.verbose:
             print("\nBuilding model")
         
-        self.model = gp.Model(name="OnePriceBiddingModel")
+        self.model = gp.Model(name="AncilliaryServiceBiddingModelCVAR")
         self.model.setParam('OutputFlag', 0)
         
         if self.verbose:
@@ -150,17 +150,52 @@ class AncilliaryServiceBiddingModelCVAR():
         print("\nBeta:")
         for h in self.data.H:
             print(f"Hour {h}: {self.results.beta[h]}")
+    
+    def verify_p90_out_of_sample(self):
+        """
+        Verifies the P90 requirement using out-of-sample testing profiles.
+
+        Args:
+            outsample_scenarios: containing the out-of-sample scenarios.
+
+        """
+        num_hours = len(self.data.H)
+        num_minutes = len(self.data.M)
+        num_profiles = self.data.n_outsample_scenarios
+        p90_threshold = self.data.epsilon_requirement  # Defined in input_data.py
+
+        print("\n--- P90 Out-of-Sample Verification ---")
+        for h in self.data.H:
+            bid = self.results.bid_capacity[h]
+            # Count violations for each profile
+            violations_per_profile = []
+            for w in self.data.W_outsample:
+                violations = 0
+                for m in self.data.M:
+                    minute_idx = h * num_minutes + m
+                    if bid > self.data.outsample_scenarios[minute_idx, w]:
+                        violations += 1
+                violations_per_profile.append(violations)
+            # Calculate the fraction of minutes where bid was not enough (per profile)
+            violation_fractions = [v / num_minutes for v in violations_per_profile]
+            # P90 requirement: at least 90% of minutes per profile should be covered
+            satisfied_profiles = [frac <= p90_threshold for frac in violation_fractions]
+            p90_satisfied = sum(satisfied_profiles) / num_profiles >= 0.9
+
+            print(f"Hour {h}:")
+            print(f"  Profiles satisfying P90: {sum(satisfied_profiles)}/{num_profiles}")
+            print(f"  P90 requirement satisfied: {p90_satisfied}")
 
 
     def run(self):
         # Makes sure the model is solved and saves the results
         try:
             self.model.optimize()
-            self.model.write("second_task/p90_model_cvar.lp")
+            self.model.write("second_task/output/verification/ancilliary_model_cvar.lp")
             if self.model.status == gp.GRB.INFEASIBLE:
                 print("Model is infeasible; computing IIS")
                 self.model.computeIIS()
-                self.model.write("p90_model_cvar.ilp")  # Writes an ILP file with the irreducible inconsistent set.
+                self.model.write("second_task/output/verification/ancilliary_model_cvar.ilp")  # Writes an ILP file with the irreducible inconsistent set.
                 print("IIS written to model.ilp")
                 exit()
             elif self.model.status == gp.GRB.UNBOUNDED:
