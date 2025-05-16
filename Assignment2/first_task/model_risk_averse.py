@@ -10,6 +10,7 @@ from .input_data import InputData
 from .model_one_price import OnePriceBiddingModel
 from .model_two_price import TwoPriceBiddingModel
 
+
 class RiskAverseExPostAnalysis:
     def __init__(self, input_data: InputData, beta=int, alpha=int, verbose: bool = True):
         self.data = input_data
@@ -18,23 +19,13 @@ class RiskAverseExPostAnalysis:
         self.beta = beta
         self.alpha = alpha
 
-
-        # Store the model class, not an instance
-        if self.model_type == 'one_price':
-            self.model_class = OnePriceBiddingModel
-        elif self.model_type == 'two_price':
-            self.model_class = TwoPriceBiddingModel
-        else:
-            raise ValueError("Invalid model type. Use 'one_price' or 'two_price'.")
-        
         # Initialize containers for model components
         class ModelComponents: pass # Simple placeholder class
         self.variables = ModelComponents()
         self.constraints = ModelComponents()
-        self.results = ModelComponents() 
+        self.results = ModelComponents() # Also initialize results if you use it similarly
 
         self.build_model()
-
         
     def build_variables(self):
         # Create the variables
@@ -53,7 +44,7 @@ class RiskAverseExPostAnalysis:
         }
 
         # Value at risk
-        self.variables.value_at_risk = self.model.addVar(name=f"ValueAtRisk")
+        self.variables.value_at_risk = self.model.addVar(lb = 0, name=f"ValueAtRisk")
 
         # Auxiliary CVaR variable
         self.variables.auxiliary_cvar = {
@@ -118,6 +109,7 @@ class RiskAverseExPostAnalysis:
                     ),                                                                                  # <-- End profit calculation
                     GRB.LESS_EQUAL,
                     self.variables.auxiliary_cvar[w],
+
                     name=f"AuxiliaryCVaR_{w}"
                 )
                 for w in self.data.W
@@ -358,12 +350,14 @@ class RiskAverseExPostAnalysis:
         try:
             # self.model.setParam(gp.GRB.Param.DualReductions, 0)
             self.model.optimize()
-            self.model.write("first_task/output/verification/risk_analysis/model.lp")
             print(f"Model status code: {self.model.status}")
+
+            self.model.write(f"{self.model_type}_model.lp")
             if self.model.status == gp.GRB.INFEASIBLE:
                 print("Model is infeasible; computing IIS")
-                self.model.write("first_task/output/verification/risk_analysis/model.ilp")  # Writes an ILP file with the irreducible inconsistent set.
-                print("IIS written to mfirst_task/output/verification/risk_analysis/model.ilp")
+                self.model.computeIIS()
+                self.model.write("model.ilp")  # Writes an ILP file with the irreducible inconsistent set.
+                print("IIS written to model.ilp")
                 exit()
             elif self.model.status == gp.GRB.UNBOUNDED:
                 print("Model is unbounded")
