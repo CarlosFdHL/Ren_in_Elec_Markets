@@ -1,6 +1,7 @@
 import sys
 import matplotlib.pyplot as plt
 import pandas as pd
+import time
 
 from .input_data import *
 from .model_one_price import OnePriceBiddingModel
@@ -8,12 +9,13 @@ from .model_two_price import TwoPriceBiddingModel
 from .expost_analysis import ExPostAnalysis
 
 if __name__ == "__main__":
+    start_time = time.time() # Start timer
     if len(sys.argv) != 2:
         raise ValueError("Usage: python main.py [one_price|two_price]")
 
     model_type = sys.argv[1].lower()
 
-    if model_type == 'one_price':
+    if model_type == 'one_price':   
         model_class = OnePriceBiddingModel
     elif model_type == 'two_price':
         model_class = TwoPriceBiddingModel
@@ -70,5 +72,7 @@ if __name__ == "__main__":
     # plt.title("Sensitivity analysis: in-sample size vs relative profit difference")
     plt.grid(True)
     plt.tight_layout()
-
     plt.show()
+    end_time = time.time()  # End timer
+    elapsed_time = end_time - start_time  # Calculate elapsed time
+    print(f"\nTotal execution time: {elapsed_time:.2f} seconds")
