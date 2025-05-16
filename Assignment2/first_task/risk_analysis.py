@@ -10,18 +10,6 @@ from .input_data import InputData
 from .model_one_price import OnePriceBiddingModel
 from .model_two_price import TwoPriceBiddingModel
 
-<<<<<<< HEAD
-class Expando(object):
-    '''
-        A small class which can have attributes set
-    '''
-    pass
-
-class ExPostAnalysis:
-    def __init__(self, input_data : InputData, beta = int, alpha = int, verbose: bool = True):
-=======
->>>>>>> Adam
-
 class RiskAverseExPostAnalysis:
     def __init__(self, input_data: InputData, beta=int, alpha=int, verbose: bool = True):
         self.data = input_data
@@ -30,11 +18,7 @@ class RiskAverseExPostAnalysis:
         self.beta = beta
         self.alpha = alpha
 
-<<<<<<< HEAD
-        self.variables = Expando()
-        self.constraints = Expando()
-        self.results = Expando()
-        
+
         # Store the model class, not an instance
         if self.model_type == 'one_price':
             self.model_class = OnePriceBiddingModel
@@ -42,15 +26,15 @@ class RiskAverseExPostAnalysis:
             self.model_class = TwoPriceBiddingModel
         else:
             raise ValueError("Invalid model type. Use 'one_price' or 'two_price'.")
-=======
+        
         # Initialize containers for model components
         class ModelComponents: pass # Simple placeholder class
         self.variables = ModelComponents()
         self.constraints = ModelComponents()
-        self.results = ModelComponents() # Also initialize results if you use it similarly
+        self.results = ModelComponents() 
 
         self.build_model()
->>>>>>> Adam
+
         
     def build_variables(self):
         # Create the variables
@@ -122,14 +106,6 @@ class RiskAverseExPostAnalysis:
         # CVaR CONSTRAINTS
         if self.model_type == 'one_price':
             self.constraints.auxiliary_cvar = {
-<<<<<<< HEAD
-                w: self.model.addConstr(self.variables.value_at_risk - 
-                                        self.data.prob_scenario * sum(self.data.scenario[w]['eprice'][t] * self.variables.production[t] +                                                                       # Profit from DA
-                                                            self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w] * self.data.scenario[w]['sc'][t] +        # Profit from imbalance in case of system requiring upward balance
-                                                            self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.imbalance[t,w] * (1 - self.data.scenario[w]['sc'][t])    # Profit from imbalance in case of system requiring downward balance
-                                                        for t in self.data.T
-                                                        ),
-=======
                 w: self.model.addConstr(
                     self.variables.value_at_risk 
                     - sum(                                                                              # <-- Start profit calculation
@@ -140,7 +116,6 @@ class RiskAverseExPostAnalysis:
                             self.variables.imbalance[t, w] * (1 - self.data.scenario[w]['sc'][t])      
                         for t in self.data.T
                     ),                                                                                  # <-- End profit calculation
->>>>>>> Adam
                     GRB.LESS_EQUAL,
                     self.variables.auxiliary_cvar[w],
 
@@ -151,16 +126,6 @@ class RiskAverseExPostAnalysis:
 
         elif self.model_type == 'two_price':
             self.constraints.auxiliary_cvar = {
-<<<<<<< HEAD
-                w: self.model.addConstr(self.variables.value_at_risk - 
-                                        self.data.prob_scenario * sum(self.data.scenario[w]['eprice'][t] * self.variables.production[t]                                                                         # Profit from DA
-                                                        + self.data.scenario[w]['sc'][t] * (self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t,w] 
-                                                                                            - self.data.positiveBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t,w])   # Profit from imbalance in case of system requiring upward balance
-                                                        + (1 - self.data.scenario[w]['sc'][t]) * (self.data.negativeBalancePriceFactor * self.data.scenario[w]['eprice'][t] * self.variables.up_imbalance[t,w] 
-                                                                                            - self.data.scenario[w]['eprice'][t] * self.variables.down_imbalance[t,w])                                          # Profit from imbalance in case of system requiring downward balance
-                                                    for t in self.data.T
-                                                    ),
-=======
                 w: self.model.addConstr(
                     self.variables.value_at_risk -
                     sum(                                                                                                                        # <-- Start profit calculation
@@ -175,7 +140,6 @@ class RiskAverseExPostAnalysis:
                         )
                         for t in self.data.T
                     ),                                                                                                                          # <-- End profit calculation
->>>>>>> Adam
                     GRB.LESS_EQUAL,
                     self.variables.auxiliary_cvar[w],
                     name=f"AuxiliaryCVaR_{w}"
@@ -395,13 +359,8 @@ class RiskAverseExPostAnalysis:
         try:
             # self.model.setParam(gp.GRB.Param.DualReductions, 0)
             self.model.optimize()
-<<<<<<< HEAD
             self.model.write("first_task/output/verification/risk_analysis/model.lp")
-=======
             print(f"Model status code: {self.model.status}")
-
-            self.model.write(f"{self.model_type}_model.lp")
->>>>>>> Adam
             if self.model.status == gp.GRB.INFEASIBLE:
                 print("Model is infeasible; computing IIS")
                 self.model.write("first_task/output/verification/risk_analysis/model.ilp")  # Writes an ILP file with the irreducible inconsistent set.

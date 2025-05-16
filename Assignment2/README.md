@@ -7,6 +7,10 @@ First Task: Optimal day-ahead and balancing-market bidding for a price-taking wi
 
 Second Task: Bidding stochastic flexible-load capacity into the FCR-D UP ancillary service market under a P90 availability requirement, using ALSO-X and CVaR methods, plus a sensitivity study on the P90 level.
 
+IMPORTANT: To run this program, make sure you are in the following directory in your terminal:
+```
+Ren_in_Elec_Markets\Assignment2
+```
 ## First Task
 
 This repository contains implementations of optimal bidding strategies for electricity producers in day-ahead and balancing markets under one-price and two-price imbalance settlement schemes.

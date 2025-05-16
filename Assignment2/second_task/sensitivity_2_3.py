@@ -47,7 +47,7 @@ if __name__ == "__main__":
                         shortfall_violations[i] += bid - out_of_sample_scenarios[idx, w] 
             shortfall_violations[i] /= num_profiles 
         outsample_violations.append(num_violations)
-
+    relative_shortfall_violations = [shortfall / (optimal_bids[i]*60)*100 for i, shortfall in enumerate(shortfall_violations)]
     # Plot results
     xlabels = ['P100', 'P95', 'P90', 'P85', 'P80']
 
@@ -58,9 +58,9 @@ if __name__ == "__main__":
     # axs[0].set_title('Optimal Bid vs Epsilon')
     axs[0].grid()
 
-    axs[1].plot(xlabels, shortfall_violations, marker='o', color='red')
+    axs[1].plot(xlabels, relative_shortfall_violations, marker='o', color='red')
     axs[1].set_xlabel('Epsilon requirement')
-    axs[1].set_ylabel('Out-of-sample Violations')
+    axs[1].set_ylabel('Out-of-sample Expected Shortfall [%]')
     # axs[1].set_title('Violations vs Epsilon')
     axs[1].grid()
 

@@ -218,7 +218,7 @@ class AncilliaryServiceBiddingModel():
                     q_low[h] = q[h]
                 else:
                     q_up[h] = q[h]
-        #self.model.write("second_task/p90_model.lp")    
+        self.model.write("second_task/output/verification/ancilliary_model.lp")
         self.save_results() 
         # print(self.variables.violation_binary[0,0,5].X)
         print(f"\nSolved in {it} iterations") 
