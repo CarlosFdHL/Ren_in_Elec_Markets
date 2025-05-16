@@ -3,6 +3,7 @@ import sys
 import numpy as np
 from .input_data import *
 from .model_risk_averse import RiskAverseExPostAnalysis
+import time
 
 import matplotlib as mpl
 mpl.rcParams.update(mpl.rcParamsDefault)
@@ -10,6 +11,7 @@ plt.rcParams['font.family'] = 'serif'
 
 
 if __name__ == "__main__":
+    start_time = time.time() # Start timer
     if len(sys.argv) != 2:
         raise ValueError("Usage: python main.py [one_price|two_price]")
     
@@ -141,3 +143,6 @@ if __name__ == "__main__":
     plt.legend()
     plt.grid(True)
     plt.show()
+    end_time = time.time()  # End timer
+    elapsed_time = end_time - start_time  # Calculate elapsed time
+    print(f"\nTotal execution time: {elapsed_time:.2f} seconds")
